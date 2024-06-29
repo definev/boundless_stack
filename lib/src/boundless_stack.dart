@@ -162,13 +162,6 @@ class _BoundlessStackState extends State<BoundlessStack> {
   }
 
   @override
-  void dispose() {
-    super.dispose();
-    _horizontalDetails.controller?.dispose();
-    _verticalDetails.controller?.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     return Stack(
       children: [

@@ -26,7 +26,8 @@ class HomeView extends StatefulWidget {
 }
 
 class _HomeViewState extends State<HomeView> {
-  final GlobalKey _stackPositionKey = GlobalKey();
+  final GlobalKey _stack0PositionKey = GlobalKey();
+  final GlobalKey _stack1PositionKey = GlobalKey();
 
   Offset referencefocalOriginal = Offset.zero;
 
@@ -45,77 +46,126 @@ class _HomeViewState extends State<HomeView> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: ZoomStackGestureDetector(
-        stack: (scaleFactor) {
-          return BoundlessStack(
-            clipBehavior: Clip.none,
-            cacheExtent: 0,
-            backgroundBuilder: gridBackgroundBuilder(
-              gridThickness: 1.0,
-              gridWidth: 100,
-              gridHeight: 100,
-              gridColor: Colors.green,
-              scaleFactor: scaleFactor,
-            ),
-            horizontalDetails: _horizontalDetails,
-            verticalDetails: _verticalDetails,
-            delegate: BoundlessStackListDelegate(
-              children: [
-                StackPosition(
-                  key: _stackPositionKey,
-                  scaleFactor: scaleFactor,
-                  data: const StackPositionData(
-                    layer: 0,
-                    offset: Offset(400, 100),
-                    height: 300,
-                    width: 700,
-                  ),
-                  moveable: const StackMove(
-                    enable: true,
-                    snap: StackSnap(
-                      snap: true,
-                      heightSnap: 50,
-                      widthSnap: 50,
-                    ),
-                  ),
-                  builder: (context, notifier, child) {
-                    return ColoredBox(
-                      color: Colors.amber.shade50,
-                      child: Stack(
-                        children: [
-                          Align(
-                            alignment: Alignment.topLeft,
-                            child: FilledButton(
-                              onPressed: () {
-                                notifier.value = notifier.value.copyWith(
-                                  height: notifier.value.height! + 10,
-                                  width: notifier.value.width! + 10,
-                                );
-                              },
-                              child: const Text('Top Left'),
-                            ),
-                          ),
-                          Align(
-                            alignment: Alignment.bottomRight,
-                            child: FilledButton(
-                              onPressed: () {
-                                notifier.value = notifier.value.copyWith(
-                                  height: notifier.value.height! - 10,
-                                  width: notifier.value.width! - 10,
-                                );
-                              },
-                              child: const Text('Bottom Right'),
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ),
+        stack: (scaleFactor) => BoundlessStack(
+          clipBehavior: Clip.none,
+          cacheExtent: 0,
+          backgroundBuilder: gridBackgroundBuilder(
+            gridThickness: 1.0,
+            gridWidth: 100,
+            gridHeight: 100,
+            gridColor: Colors.green,
             scaleFactor: scaleFactor,
-          );
-        },
+          ),
+          horizontalDetails: _horizontalDetails,
+          verticalDetails: _verticalDetails,
+          delegate: BoundlessStackListDelegate(
+            children: [
+              StackPosition(
+                key: _stack0PositionKey,
+                scaleFactor: scaleFactor,
+                data: const StackPositionData(
+                  layer: 0,
+                  offset: Offset(400, 100),
+                  height: 300,
+                  width: 700,
+                ),
+                moveable: const StackMove(
+                  enable: true,
+                  snap: StackSnap(
+                    snap: true,
+                    heightSnap: 50,
+                    widthSnap: 50,
+                  ),
+                ),
+                builder: (context, notifier, child) {
+                  return ColoredBox(
+                    color: Colors.amber.shade50,
+                    child: Stack(
+                      children: [
+                        Align(
+                          alignment: Alignment.topLeft,
+                          child: FilledButton(
+                            onPressed: () {
+                              notifier.value = notifier.value.copyWith(
+                                height: notifier.value.height! + 10,
+                                width: notifier.value.width! + 10,
+                              );
+                            },
+                            child: const Text('Top Left'),
+                          ),
+                        ),
+                        Align(
+                          alignment: Alignment.bottomRight,
+                          child: FilledButton(
+                            onPressed: () {
+                              notifier.value = notifier.value.copyWith(
+                                height: notifier.value.height! - 10,
+                                width: notifier.value.width! - 10,
+                              );
+                            },
+                            child: const Text('Bottom Right'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+              StackPosition(
+                key: _stack1PositionKey,
+                scaleFactor: scaleFactor,
+                data: const StackPositionData(
+                  layer: 0,
+                  offset: Offset(400, 500),
+                  height: 300,
+                  width: 700,
+                ),
+                moveable: const StackMove(
+                  enable: true,
+                  snap: StackSnap(
+                    snap: true,
+                    heightSnap: 50,
+                    widthSnap: 50,
+                  ),
+                ),
+                builder: (context, notifier, child) {
+                  return ColoredBox(
+                    color: Colors.amber.shade50,
+                    child: Stack(
+                      children: [
+                        Align(
+                          alignment: Alignment.topLeft,
+                          child: FilledButton(
+                            onPressed: () {
+                              notifier.value = notifier.value.copyWith(
+                                height: notifier.value.height! + 10,
+                                width: notifier.value.width! + 10,
+                              );
+                            },
+                            child: const Text('Top Left'),
+                          ),
+                        ),
+                        Align(
+                          alignment: Alignment.bottomRight,
+                          child: FilledButton(
+                            onPressed: () {
+                              notifier.value = notifier.value.copyWith(
+                                height: notifier.value.height! - 10,
+                                width: notifier.value.width! - 10,
+                              );
+                            },
+                            child: const Text('Bottom Right'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+          scaleFactor: scaleFactor,
+        ),
       ),
     );
   }
