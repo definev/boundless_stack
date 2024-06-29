@@ -1,0 +1,7 @@
+analyzer:
+  errors:
+    library_private_types_in_public_api: ignore
+include: package:flutter_lints/flutter.yaml
+
+# Additional information about this file can be found at
+# https://dart.dev/guides/language/analysis-options
