@@ -72,7 +72,6 @@ class _HomeViewState extends State<HomeView> {
                 moveable: const StackMove(
                   enable: true,
                   snap: StackSnap(
-                    snap: true,
                     heightSnap: 50,
                     widthSnap: 50,
                   ),

@@ -3,12 +3,10 @@ import 'package:flutter/widgets.dart';
 
 class StackSnap {
   const StackSnap({
-    required this.snap,
     required this.heightSnap,
     required this.widthSnap,
   });
 
-  final bool snap;
   final double heightSnap;
   final double widthSnap;
 }
@@ -136,16 +134,17 @@ class _StackPositionState extends State<StackPosition> {
       onPanUpdate: (details) {
         final delta = details.localPosition - initialLocalPosition;
         if (widget.moveable.snap case final snap?) {
-          final snapOffset = Offset(
-            snap.snap
-                ? (delta.dx / snap.widthSnap).round() * snap.widthSnap
-                : delta.dx,
-            snap.snap
-                ? (delta.dy / snap.heightSnap).round() * snap.heightSnap
-                : delta.dy,
+          final snapInitialOffset = Offset(
+            (initialOffset.dx / snap.widthSnap).round() * snap.widthSnap,
+            (initialOffset.dy / snap.heightSnap).round() * snap.heightSnap,
           );
+          final snapOffset = Offset(
+            (delta.dx / snap.widthSnap).round() * snap.widthSnap,
+            (delta.dy / snap.heightSnap).round() * snap.heightSnap,
+          );
+
           notifier.value = notifier.value.copyWith(
-            offset: initialOffset + snapOffset,
+            offset: snapInitialOffset + snapOffset,
           );
         } else {
           notifier.value = notifier.value.copyWith(
