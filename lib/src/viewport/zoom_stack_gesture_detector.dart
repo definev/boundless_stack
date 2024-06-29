@@ -4,9 +4,11 @@ import 'package:flutter/widgets.dart';
 class ZoomStackGestureDetector extends StatefulWidget {
   const ZoomStackGestureDetector({
     super.key,
+    this.initialScaleFactor = 0.5,
     required this.stack,
   });
 
+  final double initialScaleFactor;
   final BoundlessStack Function(double scaleFactor) stack;
 
   @override
@@ -15,8 +17,8 @@ class ZoomStackGestureDetector extends StatefulWidget {
 }
 
 class _ZoomStackGestureDetectorState extends State<ZoomStackGestureDetector> {
-  double _scaleStart = 0.5;
-  double scaleFactor = 0.5;
+  late double _scaleStart = widget.initialScaleFactor;
+  late double scaleFactor = widget.initialScaleFactor;
 
   Offset referencefocalOriginal = Offset.zero;
 
