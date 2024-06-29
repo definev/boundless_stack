@@ -46,6 +46,7 @@ class _HomeViewState extends State<HomeView> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: ZoomStackGestureDetector(
+        initialScaleFactor: 1,
         stack: (scaleFactor) => BoundlessStack(
           clipBehavior: Clip.none,
           cacheExtent: 0,
@@ -110,57 +111,58 @@ class _HomeViewState extends State<HomeView> {
                   );
                 },
               ),
-              StackPosition(
-                key: _stack1PositionKey,
-                scaleFactor: scaleFactor,
-                data: const StackPositionData(
-                  layer: 0,
-                  offset: Offset(400, 500),
-                  height: 300,
-                  width: 700,
-                ),
-                moveable: const StackMove(
-                  enable: true,
-                  // snap: StackSnap(
-                  //   snap: true,
-                  //   heightSnap: 50,
-                  //   widthSnap: 50,
-                  // ),
-                ),
-                builder: (context, notifier, child) {
-                  return ColoredBox(
-                    color: Colors.amber.shade50,
-                    child: Stack(
-                      children: [
-                        Align(
-                          alignment: Alignment.topLeft,
-                          child: FilledButton(
-                            onPressed: () {
-                              notifier.value = notifier.value.copyWith(
-                                height: notifier.value.height! + 10,
-                                width: notifier.value.width! + 10,
-                              );
-                            },
-                            child: const Text('Top Left'),
-                          ),
-                        ),
-                        Align(
-                          alignment: Alignment.bottomRight,
-                          child: FilledButton(
-                            onPressed: () {
-                              notifier.value = notifier.value.copyWith(
-                                height: notifier.value.height! - 10,
-                                width: notifier.value.width! - 10,
-                              );
-                            },
-                            child: const Text('Bottom Right'),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
+              // StackPosition(
+              //   key: _stack1PositionKey,
+              //   scaleFactor: scaleFactor,
+              //   data: const StackPositionData(
+              //     layer: 0,
+              //     offset: Offset(400, 500),
+              //     height: 300,
+              //     width: 700,
+              //   ),
+              //   moveable: const StackMove(
+              //     enable: true,
+              //     // snap: StackSnap(
+              //     //   snap: true,
+              //     //   heightSnap: 50,
+              //     //   widthSnap: 50,
+              //     // ),
+              //   ),
+              //   builder: (context, notifier, child) {
+              //     return ColoredBox(
+              //       color: Colors.amber.shade50,
+              //       child: Stack(
+              //         children: [
+              //           Align(
+              //             alignment: Alignment.topLeft,
+              //             child: FilledButton(
+              //               onPressed: () {
+              //                 notifier.value = notifier.value.copyWith(
+              //                   height: notifier.value.height! + 10,
+              //                   width: notifier.value.width! + 10,
+              //                 );
+              //               },
+              //               child: const Text('Top Left'),
+              //             ),
+              //           ),
+              //           Align(
+              //             alignment: Alignment.bottomRight,
+              //             child: FilledButton(
+              //               onPressed: () {
+              //                 notifier.value = notifier.value.copyWith(
+              //                   height: notifier.value.height! - 10,
+              //                   width: notifier.value.width! - 10,
+              //                 );
+              //               },
+              //               child: const Text('Bottom Right'),
+              //             ),
+              //           ),
+              //         ],
+              //       ),
+              //     );
+              //   },
+              // ),
+
             ],
           ),
           scaleFactor: scaleFactor,
