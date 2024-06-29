@@ -64,7 +64,7 @@ class BoundlessStack extends StatefulWidget {
     this.dragStartBehavior = DragStartBehavior.start,
     this.keyboardDismissBehavior = ScrollViewKeyboardDismissBehavior.manual,
     this.clipBehavior = Clip.hardEdge,
-    this.scaleFactor = 1.0,
+    required this.scaleFactor,
     this.backgroundBuilder,
   });
 

@@ -16,7 +16,7 @@ class StackSnap {
 class StackMove {
   const StackMove({
     required this.enable,
-    required this.snap,
+    this.snap,
   });
 
   final bool enable;
