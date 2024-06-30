@@ -48,7 +48,8 @@ class _HomeViewState extends State<HomeView> {
       body: ZoomStackGestureDetector(
         onScaleFactorChanged: (scaleFactor) => setState(() => this.scaleFactor = scaleFactor),
         scaleFactor: scaleFactor,
-        stack: (scaleFactor) => BoundlessStack(
+        stack: (stackKey, scaleFactor) => BoundlessStack(
+          key: stackKey,
           clipBehavior: Clip.none,
           cacheExtent: 0,
           backgroundBuilder: gridBackgroundBuilder(

@@ -1,6 +1,5 @@
 import 'package:boundless_stack/src/viewport/boundless_stack_viewport.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -122,12 +121,31 @@ class BoundlessStack extends StatefulWidget {
   final BackgroundBuilder? backgroundBuilder;
 
   @override
-  State<BoundlessStack> createState() => _BoundlessStackState();
+  State<BoundlessStack> createState() => BoundlessStackState();
 }
 
-class _BoundlessStackState extends State<BoundlessStack> {
+class BoundlessStackState extends State<BoundlessStack> {
   late ScrollableDetails _horizontalDetails;
   late ScrollableDetails _verticalDetails;
+
+  void overrideScrollBehavior() {
+    _horizontalDetails = _horizontalDetails.copyWith(
+      physics: const NeverScrollableScrollPhysics(),
+    );
+    _verticalDetails = _verticalDetails.copyWith(
+      physics: const NeverScrollableScrollPhysics(),
+    );
+  }
+
+  void restoreScrollBehavior() {
+    _horizontalDetails = _horizontalDetails.copyWith(
+      physics:
+          widget.horizontalDetails.physics ?? const ClampingScrollPhysics(),
+    );
+    _verticalDetails = _verticalDetails.copyWith(
+      physics: widget.verticalDetails.physics ?? const ClampingScrollPhysics(),
+    );
+  }
 
   @override
   void initState() {
@@ -135,11 +153,9 @@ class _BoundlessStackState extends State<BoundlessStack> {
 
     _horizontalDetails = widget.horizontalDetails.copyWith(
       controller: widget.horizontalDetails.controller ?? ScrollController(),
-      physics: kIsWeb ? const NeverScrollableScrollPhysics() : null,
     );
     _verticalDetails = widget.verticalDetails.copyWith(
       controller: widget.verticalDetails.controller ?? ScrollController(),
-      physics: kIsWeb ? const NeverScrollableScrollPhysics() : null,
     );
 
     WidgetsBinding.instance.addPostFrameCallback((_) {

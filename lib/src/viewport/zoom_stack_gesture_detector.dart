@@ -1,6 +1,25 @@
+import 'dart:async';
+
 import 'package:boundless_stack/boundless_stack.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+
+class _Debouncer {
+  final int milliseconds;
+  Timer? _timer;
+
+  _Debouncer({required this.milliseconds});
+
+  void run(VoidCallback action) {
+    _timer?.cancel();
+    _timer = Timer(Duration(milliseconds: milliseconds), action);
+  }
+
+  void dispose() {
+    _timer?.cancel();
+  }
+}
 
 class ZoomStackGestureDetector extends StatefulWidget {
   const ZoomStackGestureDetector({
@@ -11,7 +30,10 @@ class ZoomStackGestureDetector extends StatefulWidget {
   });
 
   final double scaleFactor;
-  final BoundlessStack Function(double scaleFactor) stack;
+  final BoundlessStack Function(
+    GlobalKey<BoundlessStackState> key,
+    double scaleFactor,
+  ) stack;
   final ValueChanged<double> onScaleFactorChanged;
 
   @override
@@ -20,12 +42,14 @@ class ZoomStackGestureDetector extends StatefulWidget {
 }
 
 class _ZoomStackGestureDetectorState extends State<ZoomStackGestureDetector> {
+  final GlobalKey<BoundlessStackState> _stackKey = GlobalKey();
+
   double? _scaleStart;
   Offset referencefocalOriginal = Offset.zero;
 
   double get scaleFactor => widget.scaleFactor;
 
-  BoundlessStack get stack => widget.stack(scaleFactor);
+  BoundlessStack get stack => widget.stack(_stackKey, scaleFactor);
 
   void move(Offset offset) {
     final topLeft = this.topLeft;
@@ -68,6 +92,8 @@ class _ZoomStackGestureDetectorState extends State<ZoomStackGestureDetector> {
 
   bool onEventScroll = false;
 
+  final _Debouncer _debouncer = _Debouncer(milliseconds: 100);
+
   @override
   Widget build(BuildContext context) {
     assert(stack.horizontalDetails.controller != null,
@@ -89,7 +115,9 @@ class _ZoomStackGestureDetectorState extends State<ZoomStackGestureDetector> {
           onScaleEnd(ScaleEndDetails());
         }
         if (event is PointerScrollEvent) {
+          _stackKey.currentState?.overrideScrollBehavior();
           move(event.scrollDelta);
+          _debouncer.run(() => _stackKey.currentState?.restoreScrollBehavior());
         }
       },
       child: GestureDetector(
