@@ -29,7 +29,7 @@ class _HomeViewState extends State<HomeView> {
   final GlobalKey _stack0PositionKey = GlobalKey();
 
   Offset referencefocalOriginal = Offset.zero;
-  double scaleFactor = 1;
+  double scaleFactor = 0.4;
 
   final ScrollableDetails _horizontalDetails = ScrollableDetails.horizontal(
     controller: ScrollController(

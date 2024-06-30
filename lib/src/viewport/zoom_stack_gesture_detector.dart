@@ -1,5 +1,6 @@
 import 'package:boundless_stack/boundless_stack.dart';
-import 'package:flutter/widgets.dart';
+import 'package:flutter/gestures.dart';
+import 'package:flutter/material.dart';
 
 class ZoomStackGestureDetector extends StatefulWidget {
   const ZoomStackGestureDetector({
@@ -19,10 +20,10 @@ class ZoomStackGestureDetector extends StatefulWidget {
 }
 
 class _ZoomStackGestureDetectorState extends State<ZoomStackGestureDetector> {
-  late double _scaleStart = widget.scaleFactor;
-  double get scaleFactor => widget.scaleFactor;
-
+  double? _scaleStart;
   Offset referencefocalOriginal = Offset.zero;
+
+  double get scaleFactor => widget.scaleFactor;
 
   BoundlessStack get stack => widget.stack(scaleFactor);
 
@@ -43,6 +44,30 @@ class _ZoomStackGestureDetectorState extends State<ZoomStackGestureDetector> {
     return (topLeft + focalPoint) / scaleFactor;
   }
 
+  void onScaleStart(ScaleStartDetails details) {
+    _scaleStart = scaleFactor;
+    referencefocalOriginal =
+        toViewportOffsetOriginal(details.localFocalPoint, scaleFactor);
+  }
+
+  void onScaleUpdate(ScaleUpdateDetails details) {
+    setState(() {
+      final desiredScale = _scaleStart! * details.scale;
+      if (desiredScale >= 1.0) return;
+      widget.onScaleFactorChanged.call(desiredScale);
+
+      final scaledfocalPointOriginal =
+          toViewportOffsetOriginal(details.localFocalPoint, desiredScale);
+      move((referencefocalOriginal - scaledfocalPointOriginal) * desiredScale);
+    });
+  }
+
+  void onScaleEnd(ScaleEndDetails details) {
+    _scaleStart = null;
+  }
+
+  bool onEventScroll = false;
+
   @override
   Widget build(BuildContext context) {
     assert(stack.horizontalDetails.controller != null,
@@ -50,22 +75,33 @@ class _ZoomStackGestureDetectorState extends State<ZoomStackGestureDetector> {
     assert(stack.verticalDetails.controller != null,
         'Vertical controller is null');
 
-    return GestureDetector(
-      onScaleStart: (details) {
-        _scaleStart = scaleFactor;
-        referencefocalOriginal =
-            toViewportOffsetOriginal(details.localFocalPoint, scaleFactor);
+    return Listener(
+      onPointerSignal: (event) {
+        if (event is PointerScaleEvent) {
+          onScaleStart(ScaleStartDetails(localFocalPoint: event.localPosition));
+          onScaleUpdate(
+            ScaleUpdateDetails(
+              scale: event.scale,
+              focalPoint: event.position,
+              localFocalPoint: event.localPosition,
+            ),
+          );
+          onScaleEnd(ScaleEndDetails());
+        }
+        if (event is PointerScrollEvent) {
+          // This should minus the the scroll offset that TwoDimensionalViewport handle
+          move(event.scrollDelta);
+        }
       },
-      onScaleUpdate: (details) => setState(() {
-        final desiredScale = _scaleStart * details.scale;
-        if (desiredScale >= 1.0) return;
-        widget.onScaleFactorChanged.call(desiredScale);
-
-        final scaledfocalPointOriginal =
-            toViewportOffsetOriginal(details.localFocalPoint, desiredScale);
-        move((referencefocalOriginal - scaledfocalPointOriginal) * desiredScale);
-      }),
-      child: stack,
+      child: GestureDetector(
+        onScaleStart: onScaleStart,
+        onScaleUpdate: onScaleUpdate,
+        onScaleEnd: onScaleEnd,
+        child: IgnorePointer(
+          ignoring: onEventScroll,
+          child: stack,
+        ),
+      ),
     );
   }
 }
