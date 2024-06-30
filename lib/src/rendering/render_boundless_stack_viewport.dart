@@ -77,9 +77,23 @@ class RenderBoundlessStackViewport extends RenderTwoDimensionalViewport {
     return true;
   }
 
+  void buildPlaceholderChild() {
+    if (buildOrObtainChildFor(const ChildVicinity(xIndex: 0, yIndex: 0))
+        case final placeholder?) {
+      placeholder.layout(constraints);
+      parentDataOf(placeholder).layoutOffset = Offset(
+        horizontalOffset.pixels,
+        verticalOffset.pixels,
+      );
+    }
+  }
+
   @override
   void layoutChildSequence() {
     setBoundary();
+
+    // workaround for placeholder child
+    buildPlaceholderChild();
 
     final builderDelegate = delegate as BoundlessStackDelegate;
     builderDelegate.viewport = this;
@@ -98,7 +112,8 @@ class RenderBoundlessStackViewport extends RenderTwoDimensionalViewport {
 
     for (final (index, child) in children.indexed) {
       final data = child.state?.notifier.value ?? child.data;
-      final vicinity = ChildVicinity(xIndex: index, yIndex: data.layer);
+      // index must increase by 1 incase it conflicts with the placeholder child
+      final vicinity = ChildVicinity(xIndex: index + 1, yIndex: data.layer);
       childWidgets![vicinity] = child;
 
       if (stackPositionInViewport(data)) {

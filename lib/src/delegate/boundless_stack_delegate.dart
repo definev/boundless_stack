@@ -20,6 +20,9 @@ class BoundlessStackDelegate extends TwoDimensionalChildDelegate {
 
   @override
   Widget? build(BuildContext context, covariant ChildVicinity vicinity) {
+    if (vicinity == const ChildVicinity(xIndex: 0, yIndex: 0)) {
+      return const SizedBox();
+    }
     if (_viewport == null) return null;
     return _viewport?.childWidgets![vicinity];
   }
