@@ -39,7 +39,7 @@ class _ZoomStackGestureDetectorState extends State<ZoomStackGestureDetector> {
     );
   }
 
-  Offset toViewportOffsetOriginal(Offset focalPoint) {
+  Offset toViewportOffsetOriginal(Offset focalPoint, double scaleFactor) {
     return (topLeft + focalPoint) / scaleFactor;
   }
 
@@ -54,7 +54,7 @@ class _ZoomStackGestureDetectorState extends State<ZoomStackGestureDetector> {
       onScaleStart: (details) {
         _scaleStart = scaleFactor;
         referencefocalOriginal =
-            toViewportOffsetOriginal(details.localFocalPoint);
+            toViewportOffsetOriginal(details.localFocalPoint, scaleFactor);
       },
       onScaleUpdate: (details) => setState(() {
         final desiredScale = _scaleStart * details.scale;
@@ -62,8 +62,8 @@ class _ZoomStackGestureDetectorState extends State<ZoomStackGestureDetector> {
         widget.onScaleFactorChanged.call(desiredScale);
 
         final scaledfocalPointOriginal =
-            toViewportOffsetOriginal(details.localFocalPoint);
-        move((referencefocalOriginal - scaledfocalPointOriginal) * scaleFactor);
+            toViewportOffsetOriginal(details.localFocalPoint, desiredScale);
+        move((referencefocalOriginal - scaledfocalPointOriginal) * desiredScale);
       }),
       child: stack,
     );
