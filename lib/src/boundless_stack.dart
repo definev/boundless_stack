@@ -1,5 +1,6 @@
 import 'package:boundless_stack/src/viewport/boundless_stack_viewport.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -134,9 +135,11 @@ class _BoundlessStackState extends State<BoundlessStack> {
 
     _horizontalDetails = widget.horizontalDetails.copyWith(
       controller: widget.horizontalDetails.controller ?? ScrollController(),
+      physics: kIsWeb ? const NeverScrollableScrollPhysics() : null,
     );
     _verticalDetails = widget.verticalDetails.copyWith(
       controller: widget.verticalDetails.controller ?? ScrollController(),
+      physics: kIsWeb ? const NeverScrollableScrollPhysics() : null,
     );
 
     WidgetsBinding.instance.addPostFrameCallback((_) {

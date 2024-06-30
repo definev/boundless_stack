@@ -89,7 +89,6 @@ class _ZoomStackGestureDetectorState extends State<ZoomStackGestureDetector> {
           onScaleEnd(ScaleEndDetails());
         }
         if (event is PointerScrollEvent) {
-          // This should minus the the scroll offset that TwoDimensionalViewport handle
           move(event.scrollDelta);
         }
       },
