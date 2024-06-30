@@ -29,6 +29,7 @@ class _HomeViewState extends State<HomeView> {
   final GlobalKey _stack0PositionKey = GlobalKey();
 
   Offset referencefocalOriginal = Offset.zero;
+  double scaleFactor = 1;
 
   final ScrollableDetails _horizontalDetails = ScrollableDetails.horizontal(
     controller: ScrollController(
@@ -45,7 +46,8 @@ class _HomeViewState extends State<HomeView> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: ZoomStackGestureDetector(
-        initialScaleFactor: 1,
+        onScaleFactorChanged: (value) => scaleFactor = value,
+        scaleFactor: scaleFactor,
         stack: (scaleFactor) => BoundlessStack(
           clipBehavior: Clip.none,
           cacheExtent: 0,
@@ -161,7 +163,6 @@ class _HomeViewState extends State<HomeView> {
               //     );
               //   },
               // ),
-
             ],
           ),
           scaleFactor: scaleFactor,

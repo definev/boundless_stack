@@ -4,14 +4,14 @@ import 'package:flutter/widgets.dart';
 class ZoomStackGestureDetector extends StatefulWidget {
   const ZoomStackGestureDetector({
     super.key,
-    this.initialScaleFactor = 0.5,
-    this.onScaleFactorChanged,
+    this.scaleFactor = 0.5,
+    required this.onScaleFactorChanged,
     required this.stack,
   });
 
-  final double initialScaleFactor;
+  final double scaleFactor;
   final BoundlessStack Function(double scaleFactor) stack;
-  final ValueChanged<double>? onScaleFactorChanged;
+  final ValueChanged<double> onScaleFactorChanged;
 
   @override
   State<ZoomStackGestureDetector> createState() =>
@@ -19,8 +19,8 @@ class ZoomStackGestureDetector extends StatefulWidget {
 }
 
 class _ZoomStackGestureDetectorState extends State<ZoomStackGestureDetector> {
-  late double _scaleStart = widget.initialScaleFactor;
-  late double scaleFactor = widget.initialScaleFactor;
+  late double _scaleStart = widget.scaleFactor;
+  double get scaleFactor => widget.scaleFactor;
 
   Offset referencefocalOriginal = Offset.zero;
 
@@ -59,12 +59,11 @@ class _ZoomStackGestureDetectorState extends State<ZoomStackGestureDetector> {
       onScaleUpdate: (details) => setState(() {
         final desiredScale = _scaleStart * details.scale;
         if (desiredScale >= 1.0) return;
-        scaleFactor = desiredScale;
+        widget.onScaleFactorChanged.call(desiredScale);
 
         final scaledfocalPointOriginal =
             toViewportOffsetOriginal(details.localFocalPoint);
         move((referencefocalOriginal - scaledfocalPointOriginal) * scaleFactor);
-        widget.onScaleFactorChanged?.call(scaleFactor);
       }),
       child: stack,
     );
