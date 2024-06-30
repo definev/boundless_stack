@@ -127,7 +127,9 @@ class _StackPositionState extends State<StackPosition>
   void didUpdateWidget(covariant StackPosition oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.data != oldWidget.data) {
-      notifier.value = widget.data;
+      notifier.value = widget.data.copyWith(
+        keepAlive: notifier.value.keepAlive,
+      );
     }
   }
 
