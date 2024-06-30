@@ -25,7 +25,7 @@ class StackPositionData with EquatableMixin {
   const StackPositionData({
     required this.layer,
     required this.offset,
-    required this.keepAlive,
+    this.keepAlive = false,
     this.width,
     this.height,
   });
@@ -143,8 +143,9 @@ class _StackPositionState extends State<StackPosition>
         setState(() {});
       },
       onPanEnd: (details) {
-        notifier.value = notifier.value.copyWith(keepAlive: false);
-        setState(() {});
+        if (widget.data.keepAlive == false) {
+          notifier.value = notifier.value.copyWith(keepAlive: false);
+        }
       },
       onPanUpdate: (details) {
         final delta = details.localPosition - initialLocalPosition;
@@ -173,6 +174,7 @@ class _StackPositionState extends State<StackPosition>
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     return LayoutBuilder(
       builder: (context, constraints) => Align(
         alignment: Alignment.topLeft,
