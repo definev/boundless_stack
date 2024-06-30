@@ -80,7 +80,7 @@ class RenderBoundlessStackViewport extends RenderTwoDimensionalViewport {
   void buildPlaceholderChild() {
     if (buildOrObtainChildFor(const ChildVicinity(xIndex: 0, yIndex: 0))
         case final placeholder?) {
-      placeholder.layout(constraints);
+      placeholder.layout(BoxConstraints.tight(Size.zero));
       parentDataOf(placeholder).layoutOffset = Offset(
         horizontalOffset.pixels,
         verticalOffset.pixels,
