@@ -41,8 +41,7 @@ class StackPositionData with EquatableMixin {
   @override
   List<Object?> get props => [layer, offset, width, height, keepAlive];
 
-  Offset calculateScaledOffset(double scaleFactor) =>
-      Offset(offset.dx * scaleFactor, offset.dy * scaleFactor);
+  Offset calculateScaledOffset(double scaleFactor) => offset * scaleFactor;
 
   StackPositionData copyWith({
     int? layer,
@@ -140,7 +139,6 @@ class _StackPositionState extends State<StackPosition>
         initialLocalPosition = details.localPosition;
         initialOffset = notifier.value.offset;
         notifier.value = notifier.value.copyWith(keepAlive: true);
-        setState(() {});
       },
       onPanEnd: (details) {
         if (widget.data.keepAlive == false) {
