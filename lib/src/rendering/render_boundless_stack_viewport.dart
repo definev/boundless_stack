@@ -48,6 +48,8 @@ class RenderBoundlessStackViewport extends RenderTwoDimensionalViewport {
   }
 
   bool stackPositionInViewport(StackPositionData data) {
+    if (data.keepAlive) return true;
+
     double horizontalPixels = horizontalOffset.pixels - cacheExtent;
     double verticalPixels = verticalOffset.pixels - cacheExtent;
     double viewportWidth = viewportDimension.width + cacheExtent;

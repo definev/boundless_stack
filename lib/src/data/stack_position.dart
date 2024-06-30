@@ -25,6 +25,7 @@ class StackPositionData with EquatableMixin {
   const StackPositionData({
     required this.layer,
     required this.offset,
+    required this.keepAlive,
     this.width,
     this.height,
   });
@@ -35,8 +36,10 @@ class StackPositionData with EquatableMixin {
   final double? width;
   final double? height;
 
+  final bool keepAlive;
+
   @override
-  List<Object?> get props => [layer, offset, width, height];
+  List<Object?> get props => [layer, offset, width, height, keepAlive];
 
   Offset calculateScaledOffset(double scaleFactor) =>
       Offset(offset.dx * scaleFactor, offset.dy * scaleFactor);
@@ -46,12 +49,14 @@ class StackPositionData with EquatableMixin {
     Offset? offset,
     double? width,
     double? height,
+    bool? keepAlive,
   }) {
     return StackPositionData(
       layer: layer ?? this.layer,
       offset: offset ?? this.offset,
       width: width ?? this.width,
       height: height ?? this.height,
+      keepAlive: keepAlive ?? this.keepAlive,
     );
   }
 }
@@ -85,7 +90,7 @@ class StackPosition extends StatefulWidget {
       data: data,
       builder: builder,
       scaleFactor: scaleFactor,
-      moveable: moveable ?? const StackMove(enable: false, snap: null),
+      moveable: moveable ?? const StackMove(enable: false),
       child: child,
     );
   }
@@ -106,14 +111,12 @@ class StackPosition extends StatefulWidget {
 class _StackPositionState extends State<StackPosition>
     with AutomaticKeepAliveClientMixin {
   @override
-  bool get wantKeepAlive => keepAlive;
+  bool get wantKeepAlive => notifier.value.keepAlive;
 
   late var notifier = ValueNotifier<StackPositionData>(widget.data);
 
   Offset initialLocalPosition = Offset.zero;
   Offset initialOffset = Offset.zero;
-
-  bool keepAlive = false;
 
   @override
   void dispose() {
@@ -136,11 +139,11 @@ class _StackPositionState extends State<StackPosition>
       onPanStart: (details) {
         initialLocalPosition = details.localPosition;
         initialOffset = notifier.value.offset;
-        keepAlive = true;
+        notifier.value = notifier.value.copyWith(keepAlive: true);
         setState(() {});
       },
       onPanEnd: (details) {
-        keepAlive = false;
+        notifier.value = notifier.value.copyWith(keepAlive: false);
         setState(() {});
       },
       onPanUpdate: (details) {
