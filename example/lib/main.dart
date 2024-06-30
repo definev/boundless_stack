@@ -46,7 +46,7 @@ class _HomeViewState extends State<HomeView> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: ZoomStackGestureDetector(
-        onScaleFactorChanged: (value) => scaleFactor = value,
+        onScaleFactorChanged: (scaleFactor) => setState(() => this.scaleFactor = scaleFactor),
         scaleFactor: scaleFactor,
         stack: (scaleFactor) => BoundlessStack(
           clipBehavior: Clip.none,

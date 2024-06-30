@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 
 class StackSnap {
@@ -137,6 +138,8 @@ class _StackPositionState extends State<StackPosition>
     required Widget child,
   }) {
     return GestureDetector(
+      supportedDevices: {...PointerDeviceKind.values}
+        ..remove(PointerDeviceKind.trackpad),
       onPanStart: (details) {
         initialLocalPosition = details.localPosition;
         initialOffset = notifier.value.offset;
