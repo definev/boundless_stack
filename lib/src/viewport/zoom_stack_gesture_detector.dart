@@ -5,11 +5,13 @@ class ZoomStackGestureDetector extends StatefulWidget {
   const ZoomStackGestureDetector({
     super.key,
     this.initialScaleFactor = 0.5,
+    this.onScaleFactorChanged,
     required this.stack,
   });
 
   final double initialScaleFactor;
   final BoundlessStack Function(double scaleFactor) stack;
+  final ValueChanged<double>? onScaleFactorChanged;
 
   @override
   State<ZoomStackGestureDetector> createState() =>
@@ -62,6 +64,7 @@ class _ZoomStackGestureDetectorState extends State<ZoomStackGestureDetector> {
         final scaledfocalPointOriginal =
             toViewportOffsetOriginal(details.localFocalPoint);
         move((referencefocalOriginal - scaledfocalPointOriginal) * scaleFactor);
+        widget.onScaleFactorChanged?.call(scaleFactor);
       }),
       child: stack,
     );
