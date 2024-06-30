@@ -27,7 +27,6 @@ class HomeView extends StatefulWidget {
 
 class _HomeViewState extends State<HomeView> {
   final GlobalKey _stack0PositionKey = GlobalKey();
-  final GlobalKey _stack1PositionKey = GlobalKey();
 
   Offset referencefocalOriginal = Offset.zero;
 
