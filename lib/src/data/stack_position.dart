@@ -103,7 +103,11 @@ class StackPosition extends StatefulWidget {
   State<StackPosition> createState() => _StackPositionState();
 }
 
-class _StackPositionState extends State<StackPosition> {
+class _StackPositionState extends State<StackPosition>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => keepAlive;
+
   late var notifier = ValueNotifier<StackPositionData>(widget.data);
 
   Offset initialLocalPosition = Offset.zero;
@@ -128,42 +132,39 @@ class _StackPositionState extends State<StackPosition> {
   Widget moveable({
     required Widget child,
   }) {
-    return KeepAlive(
-      keepAlive: keepAlive,
-      child: GestureDetector(
-        onPanStart: (details) {
-          initialLocalPosition = details.localPosition;
-          initialOffset = notifier.value.offset;
-          keepAlive = true;
-          setState(() {});
-        },
-        onPanEnd: (details) {
-          keepAlive = false;
-          setState(() {});
-        },
-        onPanUpdate: (details) {
-          final delta = details.localPosition - initialLocalPosition;
-          if (widget.moveable.snap case final snap?) {
-            final snapInitialOffset = Offset(
-              (initialOffset.dx / snap.widthSnap).round() * snap.widthSnap,
-              (initialOffset.dy / snap.heightSnap).round() * snap.heightSnap,
-            );
-            final snapOffset = Offset(
-              (delta.dx / snap.widthSnap).round() * snap.widthSnap,
-              (delta.dy / snap.heightSnap).round() * snap.heightSnap,
-            );
+    return GestureDetector(
+      onPanStart: (details) {
+        initialLocalPosition = details.localPosition;
+        initialOffset = notifier.value.offset;
+        keepAlive = true;
+        setState(() {});
+      },
+      onPanEnd: (details) {
+        keepAlive = false;
+        setState(() {});
+      },
+      onPanUpdate: (details) {
+        final delta = details.localPosition - initialLocalPosition;
+        if (widget.moveable.snap case final snap?) {
+          final snapInitialOffset = Offset(
+            (initialOffset.dx / snap.widthSnap).round() * snap.widthSnap,
+            (initialOffset.dy / snap.heightSnap).round() * snap.heightSnap,
+          );
+          final snapOffset = Offset(
+            (delta.dx / snap.widthSnap).round() * snap.widthSnap,
+            (delta.dy / snap.heightSnap).round() * snap.heightSnap,
+          );
 
-            notifier.value = notifier.value.copyWith(
-              offset: snapInitialOffset + snapOffset,
-            );
-          } else {
-            notifier.value = notifier.value.copyWith(
-              offset: initialOffset + delta,
-            );
-          }
-        },
-        child: child,
-      ),
+          notifier.value = notifier.value.copyWith(
+            offset: snapInitialOffset + snapOffset,
+          );
+        } else {
+          notifier.value = notifier.value.copyWith(
+            offset: initialOffset + delta,
+          );
+        }
+      },
+      child: child,
     );
   }
 
