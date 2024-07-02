@@ -1,5 +1,6 @@
 import 'package:boundless_stack/src/data/stack_position.dart';
 import 'package:boundless_stack/src/delegate/boundless_stack_delegate.dart';
+import 'package:flutter/src/rendering/box.dart';
 import 'package:flutter/widgets.dart';
 
 class RenderBoundlessStackViewport extends RenderTwoDimensionalViewport {
@@ -26,6 +27,7 @@ class RenderBoundlessStackViewport extends RenderTwoDimensionalViewport {
 
   Map<ChildVicinity, Widget>? childWidgets = {};
   List<ValueNotifier<StackPositionData>>? _stackPositionNotifiers = [];
+  List<RenderBox>? _children = [];
 
   @override
   void dispose() {
@@ -33,6 +35,7 @@ class RenderBoundlessStackViewport extends RenderTwoDimensionalViewport {
     childWidgets = null;
     _stackPositionNotifiers?.clear();
     _stackPositionNotifiers = null;
+    _children = null;
     super.dispose();
   }
 
@@ -89,7 +92,34 @@ class RenderBoundlessStackViewport extends RenderTwoDimensionalViewport {
   }
 
   @override
+  bool hitTestChildren(BoxHitTestResult result, {required Offset position}) {
+    for (final RenderBox child in _children!.reversed) {
+      final TwoDimensionalViewportParentData childParentData =
+          parentDataOf(child);
+      if (!childParentData.isVisible) {
+        // Can't hit a child that is not visible.
+        continue;
+      }
+      final bool isHit = result.addWithPaintOffset(
+        offset: childParentData.paintOffset,
+        position: position,
+        hitTest: (BoxHitTestResult result, Offset transformed) {
+          assert(transformed == position - childParentData.paintOffset!);
+          return child.hitTest(result, position: transformed);
+        },
+      );
+      if (isHit) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  @override
   void layoutChildSequence() {
+    _children = null;
+    _children = [];
+
     setBoundary();
 
     // workaround for placeholder child
@@ -118,6 +148,7 @@ class RenderBoundlessStackViewport extends RenderTwoDimensionalViewport {
 
       if (stackPositionInViewport(data)) {
         if (buildOrObtainChildFor(vicinity) case final renderBox?) {
+          _children!.add(renderBox);
           final notifier = child.state?.notifier;
           notifier?.addListener(markNeedsLayout);
           if (notifier != null) _stackPositionNotifiers!.add(notifier);
