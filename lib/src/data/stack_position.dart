@@ -23,7 +23,8 @@ class StackMove {
 }
 
 class StackPositionData with EquatableMixin {
-  const StackPositionData({
+  StackPositionData({
+    this.id,
     required this.layer,
     required this.offset,
     this.keepAlive = false,
@@ -31,6 +32,7 @@ class StackPositionData with EquatableMixin {
     this.height,
   });
 
+  final String? id;
   final int layer;
   final Offset offset;
 
@@ -40,7 +42,7 @@ class StackPositionData with EquatableMixin {
   final bool keepAlive;
 
   @override
-  List<Object?> get props => [layer, offset, width, height, keepAlive];
+  List<Object?> get props => [id, layer, offset, width, height, keepAlive];
 
   Offset calculateScaledOffset(double scaleFactor) => offset * scaleFactor;
 
