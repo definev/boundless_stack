@@ -24,7 +24,7 @@ class BoundlessStackDelegate extends TwoDimensionalChildDelegate {
       return const SizedBox();
     }
     if (_viewport == null) return null;
-    return _viewport?.childWidgets![vicinity];
+    return _viewport?.childWidgets?[vicinity];
   }
 
   @override

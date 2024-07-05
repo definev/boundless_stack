@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:boundless_stack/boundless_stack.dart';
 import 'package:flutter/material.dart';
 
@@ -26,8 +28,6 @@ class HomeView extends StatefulWidget {
 }
 
 class _HomeViewState extends State<HomeView> {
-  final GlobalKey _stack0PositionKey = GlobalKey();
-
   Offset referencefocalOriginal = Offset.zero;
   double scaleFactor = 0.4;
 
@@ -42,11 +42,32 @@ class _HomeViewState extends State<HomeView> {
     ),
   );
 
+  Random rand = Random();
+  int sampleSize = 1000;
+
+  late List<GlobalKey> globalKeys = [
+    for (int index = 0; index < sampleSize; index += 1)
+      GlobalKey(debugLabel: 'key_$index'),
+  ];
+  late List<StackPositionData> data = [
+    for (int index = 0; index < sampleSize; index += 1)
+      StackPositionData(
+        layer: 0,
+        offset: Offset(
+          rand.nextDouble() * 30000,
+          rand.nextDouble() * 30000,
+        ),
+        height: 200 + rand.nextDouble() * 300,
+        width: 200 + rand.nextDouble() * 300,
+      ),
+  ];
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: ZoomStackGestureDetector(
-        onScaleFactorChanged: (scaleFactor) => setState(() => this.scaleFactor = scaleFactor),
+        onScaleFactorChanged: (scaleFactor) =>
+            setState(() => this.scaleFactor = scaleFactor),
         scaleFactor: scaleFactor,
         stack: (stackKey, scaleFactor) => BoundlessStack(
           key: stackKey,
@@ -63,107 +84,18 @@ class _HomeViewState extends State<HomeView> {
           verticalDetails: _verticalDetails,
           delegate: BoundlessStackListDelegate(
             children: [
-              StackPosition(
-                key: _stack0PositionKey,
-                scaleFactor: scaleFactor,
-                data: const StackPositionData(
-                  layer: 0,
-                  offset: Offset(400, 100),
-                  height: 300,
-                  width: 700,
-                ),
-                moveable: const StackMove(
-                  enable: true,
-                  snap: StackSnap(
-                    heightSnap: 50,
-                    widthSnap: 50,
+              for (int index = 0; index < sampleSize; index += 1)
+                StackPosition(
+                  key: globalKeys[index],
+                  data: data[index],
+                  onDataUpdated: (value) => data[index] = value,
+                  scaleFactor: scaleFactor,
+                  moveable: const StackMove(enable: true),
+                  builder: (context, notifier, child) => StackChild(
+                    notifier: notifier,
+                    child: child,
                   ),
                 ),
-                builder: (context, notifier, child) {
-                  return ColoredBox(
-                    color: Colors.amber.shade50,
-                    child: Stack(
-                      children: [
-                        Align(
-                          alignment: Alignment.topLeft,
-                          child: FilledButton(
-                            onPressed: () {
-                              notifier.value = notifier.value.copyWith(
-                                height: notifier.value.height! + 10,
-                                width: notifier.value.width! + 10,
-                              );
-                            },
-                            child: const Text('Top Left'),
-                          ),
-                        ),
-                        Align(
-                          alignment: Alignment.bottomRight,
-                          child: FilledButton(
-                            onPressed: () {
-                              notifier.value = notifier.value.copyWith(
-                                height: notifier.value.height! - 10,
-                                width: notifier.value.width! - 10,
-                              );
-                            },
-                            child: const Text('Bottom Right'),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-              // StackPosition(
-              //   key: _stack1PositionKey,
-              //   scaleFactor: scaleFactor,
-              //   data: const StackPositionData(
-              //     layer: 0,
-              //     offset: Offset(400, 500),
-              //     height: 300,
-              //     width: 700,
-              //   ),
-              //   moveable: const StackMove(
-              //     enable: true,
-              //     // snap: StackSnap(
-              //     //   snap: true,
-              //     //   heightSnap: 50,
-              //     //   widthSnap: 50,
-              //     // ),
-              //   ),
-              //   builder: (context, notifier, child) {
-              //     return ColoredBox(
-              //       color: Colors.amber.shade50,
-              //       child: Stack(
-              //         children: [
-              //           Align(
-              //             alignment: Alignment.topLeft,
-              //             child: FilledButton(
-              //               onPressed: () {
-              //                 notifier.value = notifier.value.copyWith(
-              //                   height: notifier.value.height! + 10,
-              //                   width: notifier.value.width! + 10,
-              //                 );
-              //               },
-              //               child: const Text('Top Left'),
-              //             ),
-              //           ),
-              //           Align(
-              //             alignment: Alignment.bottomRight,
-              //             child: FilledButton(
-              //               onPressed: () {
-              //                 notifier.value = notifier.value.copyWith(
-              //                   height: notifier.value.height! - 10,
-              //                   width: notifier.value.width! - 10,
-              //                 );
-              //               },
-              //               child: const Text('Bottom Right'),
-              //             ),
-              //           ),
-              //         ],
-              //       ),
-              //     );
-              //   },
-              // ),
             ],
           ),
           scaleFactor: scaleFactor,
@@ -171,4 +103,51 @@ class _HomeViewState extends State<HomeView> {
       ),
     );
   }
+}
+
+class StackChild extends StatefulWidget {
+  const StackChild({
+    super.key,
+    required this.notifier,
+    this.child,
+  });
+
+  final ValueNotifier<StackPositionData> notifier;
+  final Widget? child;
+
+  @override
+  State<StackChild> createState() => _StackChildState();
+}
+
+class _StackChildState extends State<StackChild>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Boundless Stack'),
+      ),
+      body: ListView.builder(
+        itemBuilder: (context, index) => ListTile(
+          title: Text('Item $index'),
+        ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          final data = widget.notifier.value;
+          widget.notifier.value = data.copyWith(
+            offset: Offset(
+              data.offset.dx + 100,
+              data.offset.dy + 100,
+            ),
+          );
+        },
+        child: const Icon(Icons.add),
+      ),
+    );
+  }
+
+  @override
+  bool get wantKeepAlive => true;
 }

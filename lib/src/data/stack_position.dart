@@ -23,8 +23,8 @@ class StackMove {
 }
 
 class StackPositionData with EquatableMixin {
-  StackPositionData({
-    this.id,
+  const StackPositionData._({
+    required this.id,
     required this.layer,
     required this.offset,
     this.keepAlive = false,
@@ -32,7 +32,25 @@ class StackPositionData with EquatableMixin {
     this.height,
   });
 
-  final String? id;
+  factory StackPositionData({
+    String? id,
+    required int layer,
+    required Offset offset,
+    double? width,
+    double? height,
+    bool keepAlive = false,
+  }) {
+    return StackPositionData._(
+      id: id ?? UniqueKey().toString(),
+      layer: layer,
+      offset: offset,
+      width: width,
+      height: height,
+      keepAlive: keepAlive,
+    );
+  }
+
+  final String id;
   final int layer;
   final Offset offset;
 
@@ -76,12 +94,14 @@ class StackPosition extends StatefulWidget {
     required this.data,
     required this.builder,
     required this.child,
+    this.onDataUpdated,
     this.moveable = const StackMove(enable: false, snap: null),
   });
 
   factory StackPosition({
     required GlobalKey key,
     required StackPositionData data,
+    ValueChanged<StackPositionData>? onDataUpdated,
     required StackPositionWidgetBuilder builder,
     required double scaleFactor,
     StackMove? moveable,
@@ -90,6 +110,7 @@ class StackPosition extends StatefulWidget {
     return StackPosition._(
       key: key,
       data: data,
+      onDataUpdated: onDataUpdated,
       builder: builder,
       scaleFactor: scaleFactor,
       moveable: moveable ?? const StackMove(enable: false),
@@ -99,6 +120,7 @@ class StackPosition extends StatefulWidget {
 
   final double scaleFactor;
   final StackPositionData data;
+  final ValueChanged<StackPositionData>? onDataUpdated;
   final StackPositionWidgetBuilder builder;
   final Widget? child;
   final StackMove moveable;
@@ -120,6 +142,18 @@ class _StackPositionState extends State<StackPosition>
   Offset initialLocalPosition = Offset.zero;
   Offset initialOffset = Offset.zero;
 
+  void onDataUpdated() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      widget.onDataUpdated?.call(notifier.value);
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.onDataUpdated != null) notifier.addListener(onDataUpdated);
+  }
+
   @override
   void dispose() {
     super.dispose();
@@ -133,6 +167,14 @@ class _StackPositionState extends State<StackPosition>
       notifier.value = widget.data.copyWith(
         keepAlive: notifier.value.keepAlive,
       );
+    }
+    if (widget.onDataUpdated != oldWidget.onDataUpdated) {
+      if (oldWidget.onDataUpdated != null) {
+        notifier.removeListener(onDataUpdated);
+      }
+      if (widget.onDataUpdated != null) {
+        notifier.addListener(onDataUpdated);
+      }
     }
   }
 

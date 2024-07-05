@@ -1,8 +1,7 @@
-import 'package:boundless_stack/boundless_stack.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 
-BackgroundBuilder gridBackgroundBuilder({
+TwoDimensionalViewportBuilder gridBackgroundBuilder({
   required double gridThickness,
   required double gridWidth,
   required double gridHeight,

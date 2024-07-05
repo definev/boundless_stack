@@ -45,12 +45,6 @@ class BoundlessStackScrollView extends TwoDimensionalScrollView {
   }
 }
 
-typedef BackgroundBuilder = Widget Function(
-  BuildContext context,
-  ViewportOffset horizontalOffset,
-  ViewportOffset verticalOffset,
-);
-
 class BoundlessStack extends StatefulWidget {
   const BoundlessStack({
     super.key,
@@ -66,6 +60,7 @@ class BoundlessStack extends StatefulWidget {
     this.clipBehavior = Clip.hardEdge,
     required this.scaleFactor,
     this.backgroundBuilder,
+    this.foregroundBuilder,
   });
 
   /// A delegate that provides the children for the [TwoDimensionalScrollView].
@@ -118,7 +113,9 @@ class BoundlessStack extends StatefulWidget {
 
   final double scaleFactor;
 
-  final BackgroundBuilder? backgroundBuilder;
+  final TwoDimensionalViewportBuilder? backgroundBuilder;
+
+  final TwoDimensionalViewportBuilder? foregroundBuilder;
 
   @override
   State<BoundlessStack> createState() => BoundlessStackState();
@@ -222,6 +219,29 @@ class BoundlessStackState extends State<BoundlessStack> {
             scaleFactor: widget.scaleFactor,
           ),
         ),
+        if (widget.foregroundBuilder case final foregroundBuilder?)
+          Positioned.fill(
+            child: ListenableBuilder(
+              listenable: Listenable.merge([
+                _horizontalDetails.controller!,
+                _verticalDetails.controller!,
+              ]),
+              builder: (context, child) {
+                if (!_horizontalDetails.controller!.hasClients) {
+                  return const SizedBox.shrink();
+                }
+                if (!_verticalDetails.controller!.hasClients) {
+                  return const SizedBox.shrink();
+                }
+
+                return foregroundBuilder.call(
+                  context,
+                  _horizontalDetails.controller!.position,
+                  _verticalDetails.controller!.position,
+                );
+              },
+            ),
+          ),
       ],
     );
   }
