@@ -55,8 +55,8 @@ class RenderBoundlessStackViewport extends RenderTwoDimensionalViewport {
     markNeedsChildrenRelayout();
   }
 
-  Map<ChildVicinity, Widget>? childWidgets;
-  List<ValueNotifier<StackPositionData>>? _stackPositionNotifiers;
+  Map<ChildVicinity, Widget>? childWidgets = {};
+  List<ValueNotifier<StackPositionData>>? _stackPositionNotifiers = [];
   Map<String, StackPositionData>? _cachedStackPositionData = {};
   List<RenderBox>? _linearChildren = [];
   VicinityManager? vicinityManager = VicinityManager();
