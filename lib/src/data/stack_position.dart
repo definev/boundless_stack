@@ -72,6 +72,7 @@ class StackPositionData with EquatableMixin {
     bool? keepAlive,
   }) {
     return StackPositionData(
+      id: id,
       layer: layer ?? this.layer,
       offset: offset ?? this.offset,
       width: width ?? this.width,

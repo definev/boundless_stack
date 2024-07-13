@@ -85,11 +85,5 @@ class _GridPainter extends CustomPainter {
   @override
   bool shouldRepaint(_GridPainter oldDelegate) {
     return true;
-    return oldDelegate.gridWidth != gridWidth ||
-        oldDelegate.gridHeight != gridHeight ||
-        oldDelegate.gridColor != gridColor ||
-        oldDelegate.scaleFactor != scaleFactor ||
-        oldDelegate.horizontalOffset.pixels != horizontalOffset.pixels ||
-        oldDelegate.verticalOffset.pixels != verticalOffset.pixels;
   }
 }
