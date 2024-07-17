@@ -24,8 +24,12 @@ class ZoomStackGestureDetector extends StatefulWidget {
   const ZoomStackGestureDetector({
     super.key,
     this.scaleFactor = 0.5,
+    required this.enableMoveByMouse,
+    required this.enableMoveByTouch,
     required this.onScaleFactorChanged,
     required this.stack,
+    this.onScaleStart,
+    this.onScaleEnd,
   });
 
   final double scaleFactor;
@@ -34,6 +38,10 @@ class ZoomStackGestureDetector extends StatefulWidget {
     double scaleFactor,
   ) stack;
   final ValueChanged<double> onScaleFactorChanged;
+  final VoidCallback? onScaleStart;
+  final VoidCallback? onScaleEnd;
+  final bool enableMoveByMouse;
+  final bool enableMoveByTouch;
 
   @override
   State<ZoomStackGestureDetector> createState() =>
@@ -120,10 +128,23 @@ class _ZoomStackGestureDetectorState extends State<ZoomStackGestureDetector> {
         }
       },
       child: GestureDetector(
-        onScaleStart: onScaleStart,
+        supportedDevices: {
+          if (widget.enableMoveByMouse) PointerDeviceKind.mouse,
+          if (widget.enableMoveByTouch) PointerDeviceKind.touch,
+          PointerDeviceKind.invertedStylus,
+          PointerDeviceKind.stylus,
+          PointerDeviceKind.trackpad,
+          PointerDeviceKind.unknown,
+        }, //
+        onScaleStart: (details) {
+          widget.onScaleStart?.call();
+          onScaleStart(details);
+        },
         onScaleUpdate: onScaleUpdate,
-        onScaleEnd: onScaleEnd,
-        trackpadScrollCausesScale: false,
+        onScaleEnd: (details) {
+          widget.onScaleEnd?.call();
+          onScaleEnd(details);
+        },
         child: ColoredBox(
           color: Colors.transparent,
           child: IgnorePointer(

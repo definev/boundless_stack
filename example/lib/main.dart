@@ -66,6 +66,8 @@ class _HomeViewState extends State<HomeView> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: ZoomStackGestureDetector(
+        enableMoveByTouch: true,
+        enableMoveByMouse: true,
         onScaleFactorChanged: (scaleFactor) =>
             setState(() => this.scaleFactor = scaleFactor),
         scaleFactor: scaleFactor,
