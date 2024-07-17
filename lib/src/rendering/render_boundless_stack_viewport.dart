@@ -43,9 +43,19 @@ class RenderBoundlessStackViewport extends RenderTwoDimensionalViewport {
     required super.mainAxis,
     required super.childManager,
     required double scaleFactor,
+    required Size biggest,
     super.cacheExtent,
     super.clipBehavior,
-  }) : _scaleFactor = scaleFactor;
+  })  : _scaleFactor = scaleFactor,
+        _biggest = biggest;
+
+  Size _biggest;
+  Size get biggest => _biggest;
+  set biggest(Size value) {
+    if (_biggest == value) return;
+    _biggest = value;
+    markNeedsChildrenRelayout();
+  }
 
   double _scaleFactor;
   double get scaleFactor => _scaleFactor;
@@ -252,9 +262,9 @@ class RenderBoundlessStackViewport extends RenderTwoDimensionalViewport {
 
     return BoxConstraints(
       minWidth: (data.width ?? 0) * scaleFactor,
-      maxWidth: (data.width ?? constraints.maxWidth) * scaleFactor,
+      maxWidth: (data.width ?? biggest.width) * scaleFactor,
       minHeight: (data.height ?? 0) * scaleFactor,
-      maxHeight: (data.height ?? constraints.maxHeight) * scaleFactor,
+      maxHeight: (data.height ?? biggest.height) * scaleFactor,
     );
   }
 }

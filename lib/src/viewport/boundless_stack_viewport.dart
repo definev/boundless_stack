@@ -11,16 +11,19 @@ class BoundlessStackViewport extends TwoDimensionalViewport {
     required super.delegate,
     required super.mainAxis,
     required this.scaleFactor,
+    required this.biggest,
     super.cacheExtent,
     super.clipBehavior,
   });
 
   final double scaleFactor;
+  final Size biggest;
 
   @override
   RenderTwoDimensionalViewport createRenderObject(BuildContext context) {
     return RenderBoundlessStackViewport(
       scaleFactor: scaleFactor,
+      biggest: biggest,
       horizontalOffset: horizontalOffset,
       horizontalAxisDirection: horizontalAxisDirection,
       verticalOffset: verticalOffset,
@@ -40,6 +43,7 @@ class BoundlessStackViewport extends TwoDimensionalViewport {
   ) {
     renderObject
       ..scaleFactor = scaleFactor
+      ..biggest = biggest
       ..horizontalOffset = horizontalOffset
       ..horizontalAxisDirection = horizontalAxisDirection
       ..verticalOffset = verticalOffset

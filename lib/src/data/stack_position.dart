@@ -1,3 +1,4 @@
+import 'package:boxy/boxy.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
@@ -7,6 +8,14 @@ class StackSnap {
     required this.heightSnap,
     required this.widthSnap,
   });
+
+  factory StackSnap.square({
+    required double snap,
+  }) =>
+      StackSnap(
+        heightSnap: snap,
+        widthSnap: snap,
+      );
 
   final double heightSnap;
   final double widthSnap;
@@ -102,9 +111,10 @@ class StackPosition extends StatefulWidget {
   factory StackPosition({
     required GlobalKey key,
     required StackPositionData data,
-    ValueChanged<StackPositionData>? onDataUpdated,
     required StackPositionWidgetBuilder builder,
     required double scaleFactor,
+    void Function(StackPositionData oldValue, StackPositionData newValue)?
+        onDataUpdated,
     StackMove? moveable,
     Widget? child,
   }) {
@@ -121,7 +131,8 @@ class StackPosition extends StatefulWidget {
 
   final double scaleFactor;
   final StackPositionData data;
-  final ValueChanged<StackPositionData>? onDataUpdated;
+  final void Function(StackPositionData oldValue, StackPositionData newValue)?
+      onDataUpdated;
   final StackPositionWidgetBuilder builder;
   final Widget? child;
   final StackMove moveable;
@@ -139,13 +150,15 @@ class _StackPositionState extends State<StackPosition>
   bool get wantKeepAlive => notifier.value.keepAlive;
 
   late var notifier = ValueNotifier<StackPositionData>(widget.data);
+  late StackPositionData oldData = notifier.value;
 
   Offset initialLocalPosition = Offset.zero;
   Offset initialOffset = Offset.zero;
 
   void onDataUpdated() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      widget.onDataUpdated?.call(notifier.value);
+      widget.onDataUpdated?.call(oldData, notifier.value);
+      oldData = notifier.value;
     });
   }
 
@@ -242,6 +255,134 @@ class _StackPositionState extends State<StackPosition>
           ),
         ),
       ),
+    );
+  }
+}
+
+class ResizableStackPosition extends StatefulWidget {
+  const ResizableStackPosition({
+    super.key,
+    required this.notifier,
+    required this.onSizeChanged,
+    required this.thumb,
+    required this.child,
+    required this.height,
+  });
+
+  final ValueNotifier<StackPositionData> notifier;
+  final void Function(Size size) onSizeChanged;
+
+  final double? height;
+  final Widget thumb;
+  final Widget child;
+
+  @override
+  State<ResizableStackPosition> createState() => _ResizableStackPositionState();
+}
+
+class _ResizableStackPositionState extends State<ResizableStackPosition> {
+  Size? miminumSize;
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.topLeft,
+      child: CustomBoxy(
+        delegate: _ResizableStackPositionDelegate(
+          thumb: (size) {
+            if (miminumSize == null && widget.height == null) {
+              miminumSize = size;
+            }
+            return GestureDetector(
+              supportedDevices: {
+                PointerDeviceKind.touch,
+                PointerDeviceKind.mouse,
+              },
+              trackpadScrollCausesScale: false,
+              onPanUpdate: (details) {
+                var newHeight = (widget.notifier.value.height ?? size.height) +
+                    details.delta.dy;
+                var newWidth = (widget.notifier.value.width ?? size.width) +
+                    details.delta.dx;
+
+                newHeight = newHeight.clamp(
+                  miminumSize?.height ?? 40,
+                  double.infinity,
+                );
+                newWidth = newWidth.clamp(
+                  200,
+                  double.infinity,
+                );
+
+                widget.notifier.value = widget.notifier.value.copyWith(
+                  height: newHeight,
+                  width: newWidth,
+                );
+                widget.onSizeChanged(
+                  Size(
+                    widget.notifier.value.width!,
+                    widget.notifier.value.height!,
+                  ),
+                );
+              },
+              child: widget.thumb,
+            );
+          },
+        ),
+        children: [
+          BoxyId(
+            id: #_child,
+            child: switch (widget.height) {
+              null => IntrinsicHeight(child: widget.child),
+              _ => ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minHeight: miminumSize?.height ?? 40,
+                    minWidth: miminumSize?.width ?? 40,
+                  ),
+                  child: widget.child,
+                ),
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ResizableStackPositionDelegate extends BoxyDelegate {
+  _ResizableStackPositionDelegate({
+    required this.thumb,
+  });
+
+  final Widget Function(Size size) thumb;
+
+  @override
+  Size layout() {
+    var firstChild = getChild(#_child);
+
+    var firstSize = firstChild.layout(constraints);
+    firstChild.position(Offset.zero);
+
+    var child = Align(
+      alignment: Alignment.bottomRight,
+      child: thumb(firstSize),
+    );
+
+    // Inflate the text widget
+    var secondChild = inflate(child, id: #second);
+
+    var secondSize = secondChild.layout(
+      constraints.tighten(
+        height: firstSize.height,
+        width: firstSize.width,
+      ),
+    );
+
+    secondChild.position(Offset.zero);
+
+    return Size(
+      firstSize.width,
+      firstSize.height + secondSize.height,
     );
   }
 }

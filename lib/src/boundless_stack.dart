@@ -15,6 +15,7 @@ class BoundlessStackScrollView extends TwoDimensionalScrollView {
     super.mainAxis = Axis.vertical,
     super.verticalDetails = const ScrollableDetails.vertical(),
     super.horizontalDetails = const ScrollableDetails.horizontal(),
+    this.biggest = const Size(10000, 10000),
     required super.delegate,
     super.cacheExtent,
     super.diagonalDragBehavior = DiagonalDragBehavior.free,
@@ -24,6 +25,7 @@ class BoundlessStackScrollView extends TwoDimensionalScrollView {
   });
 
   final double scaleFactor;
+  final Size biggest;
 
   @override
   Widget buildViewport(
@@ -32,6 +34,7 @@ class BoundlessStackScrollView extends TwoDimensionalScrollView {
     ViewportOffset horizontalOffset,
   ) {
     return BoundlessStackViewport(
+      biggest: biggest,
       scaleFactor: scaleFactor,
       verticalOffset: verticalOffset,
       verticalAxisDirection: AxisDirection.down,

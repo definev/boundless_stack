@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:boundless_stack/boundless_stack.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/widgets.dart';
 
 class _Debouncer {
   final int milliseconds;
@@ -124,9 +123,13 @@ class _ZoomStackGestureDetectorState extends State<ZoomStackGestureDetector> {
         onScaleStart: onScaleStart,
         onScaleUpdate: onScaleUpdate,
         onScaleEnd: onScaleEnd,
-        child: IgnorePointer(
-          ignoring: onEventScroll,
-          child: stack,
+        trackpadScrollCausesScale: false,
+        child: ColoredBox(
+          color: Colors.transparent,
+          child: IgnorePointer(
+            ignoring: onEventScroll,
+            child: stack,
+          ),
         ),
       ),
     );
