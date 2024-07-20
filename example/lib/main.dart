@@ -90,7 +90,7 @@ class _HomeViewState extends State<HomeView> {
                 StackPosition(
                   key: globalKeys[index],
                   data: data[index],
-                  onDataUpdated: (_, value) => data[index] = value,
+                  onDataUpdated: (value) => data[index] = value,
                   scaleFactor: scaleFactor,
                   moveable: const StackMove(enable: true),
                   builder: (context, notifier, child) => StackChild(

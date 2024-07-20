@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:boundless_stack/boundless_stack.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:simple_logger/simple_logger.dart';
 
 class _Debouncer {
   final int milliseconds;
@@ -19,6 +20,11 @@ class _Debouncer {
     _timer?.cancel();
   }
 }
+
+final logger = SimpleLogger(
+    // Optionally, specify a log level (defaults to Level.info).
+    // Optionally, specify a custom `LogTheme` to override log styles.
+    );
 
 class ZoomStackGestureDetector extends StatefulWidget {
   const ZoomStackGestureDetector({
@@ -48,7 +54,8 @@ class ZoomStackGestureDetector extends StatefulWidget {
       _ZoomStackGestureDetectorState();
 }
 
-class _ZoomStackGestureDetectorState extends State<ZoomStackGestureDetector> {
+class _ZoomStackGestureDetectorState extends State<ZoomStackGestureDetector>
+    with SingleTickerProviderStateMixin {
   final GlobalKey<BoundlessStackState> _stackKey = GlobalKey();
 
   double? _scaleStart;
@@ -58,17 +65,18 @@ class _ZoomStackGestureDetectorState extends State<ZoomStackGestureDetector> {
 
   BoundlessStack get stack => widget.stack(_stackKey, scaleFactor);
 
-  void move(Offset offset) {
-    final topLeft = this.topLeft;
-    stack.horizontalDetails.controller!.jumpTo(topLeft.dx + offset.dx);
-    stack.verticalDetails.controller!.jumpTo(topLeft.dy + offset.dy);
-  }
-
   Offset get topLeft {
     return Offset(
       stack.horizontalDetails.controller!.offset,
       stack.verticalDetails.controller!.offset,
     );
+  }
+
+  void move(Offset offset) {
+    logger.info('ZoomStackGestureDetector: move | offset: $offset');
+    final topLeft = this.topLeft;
+    stack.horizontalDetails.controller!.jumpTo(topLeft.dx + offset.dx);
+    stack.verticalDetails.controller!.jumpTo(topLeft.dy + offset.dy);
   }
 
   Offset toViewportOffsetOriginal(Offset focalPoint, double scaleFactor) {
@@ -97,7 +105,6 @@ class _ZoomStackGestureDetectorState extends State<ZoomStackGestureDetector> {
     _scaleStart = null;
   }
 
-  bool onEventScroll = false;
 
   final _Debouncer _debouncer = _Debouncer(milliseconds: 100);
 
@@ -111,6 +118,8 @@ class _ZoomStackGestureDetectorState extends State<ZoomStackGestureDetector> {
     return Listener(
       onPointerSignal: (event) {
         if (event is PointerScaleEvent) {
+          logger.info(
+              'ZoomStackGestureDetector: receive PointerScaleEvent | kind: ${event.kind} || at: ${event.position}');
           onScaleStart(ScaleStartDetails(localFocalPoint: event.localPosition));
           onScaleUpdate(
             ScaleUpdateDetails(
@@ -122,35 +131,51 @@ class _ZoomStackGestureDetectorState extends State<ZoomStackGestureDetector> {
           onScaleEnd(ScaleEndDetails());
         }
         if (event is PointerScrollEvent) {
+          logger.info(
+              'ZoomStackGestureDetector: receive PointerScrollEvent | kind: ${event.kind} || at: ${event.position}');
           _stackKey.currentState?.overrideScrollBehavior();
           move(event.scrollDelta);
           _debouncer.run(() => _stackKey.currentState?.restoreScrollBehavior());
         }
       },
-      child: GestureDetector(
-        supportedDevices: {
-          if (widget.enableMoveByMouse) PointerDeviceKind.mouse,
-          if (widget.enableMoveByTouch) PointerDeviceKind.touch,
-          PointerDeviceKind.invertedStylus,
-          PointerDeviceKind.stylus,
-          PointerDeviceKind.trackpad,
-          PointerDeviceKind.unknown,
-        }, //
-        onScaleStart: (details) {
-          widget.onScaleStart?.call();
-          onScaleStart(details);
-        },
-        onScaleUpdate: onScaleUpdate,
-        onScaleEnd: (details) {
-          widget.onScaleEnd?.call();
-          onScaleEnd(details);
+      child: RawGestureDetector(
+        gestures: {
+          ScaleGestureRecognizer:
+              GestureRecognizerFactoryWithHandlers<ScaleGestureRecognizer>(
+            () => ScaleGestureRecognizer(),
+            (ScaleGestureRecognizer instance) {
+              instance
+                ..onStart = (details) {
+                  logger.info(
+                      'ZoomStackGestureDetector: onStart | pointerCount: ${details.pointerCount}');
+                  widget.onScaleStart?.call();
+                  onScaleStart(details);
+                }
+                ..onUpdate = (details) {
+                  logger.info(
+                      'ZoomStackGestureDetector: onUpdate | pointerCount: ${details.pointerCount}');
+                  onScaleUpdate(details);
+                }
+                ..onEnd = (details) {
+                  logger.info(
+                      'ZoomStackGestureDetector: onEnd | scaleVelocity: ${details.scaleVelocity}');
+                  widget.onScaleEnd?.call();
+                  onScaleEnd(details);
+                }
+                ..supportedDevices = {
+                  if (widget.enableMoveByMouse) PointerDeviceKind.mouse,
+                  if (widget.enableMoveByTouch) PointerDeviceKind.touch,
+                  // PointerDeviceKind.invertedStylus,
+                  // PointerDeviceKind.stylus,
+                  // PointerDeviceKind.trackpad,
+                  // PointerDeviceKind.unknown,
+                };
+            },
+          ),
         },
         child: ColoredBox(
           color: Colors.transparent,
-          child: IgnorePointer(
-            ignoring: onEventScroll,
-            child: stack,
-          ),
+          child: stack,
         ),
       ),
     );

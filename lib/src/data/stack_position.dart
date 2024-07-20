@@ -1,8 +1,21 @@
+import 'dart:math';
+
 import 'package:boxy/boxy.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 
+class StackResize {
+  const StackResize({
+    required this.height,
+    required this.thumb,
+  });
+
+  final double? height;
+  final Widget thumb;
+}
+
+/// Movable
 class StackSnap {
   const StackSnap({
     required this.heightSnap,
@@ -22,14 +35,12 @@ class StackSnap {
 }
 
 class StackMove {
-  const StackMove({
-    required this.enable,
-    this.snap,
-  });
+  const StackMove({this.snap});
 
-  final bool enable;
   final StackSnap? snap;
 }
+
+/// /Movable
 
 class StackPositionData with EquatableMixin {
   const StackPositionData._({
@@ -105,7 +116,8 @@ class StackPosition extends StatefulWidget {
     required this.builder,
     required this.child,
     this.onDataUpdated,
-    this.moveable = const StackMove(enable: false, snap: null),
+    this.moveable = null,
+    this.resizable = null,
   });
 
   factory StackPosition({
@@ -113,9 +125,9 @@ class StackPosition extends StatefulWidget {
     required StackPositionData data,
     required StackPositionWidgetBuilder builder,
     required double scaleFactor,
-    void Function(StackPositionData oldValue, StackPositionData newValue)?
-        onDataUpdated,
+    void Function(StackPositionData newValue)? onDataUpdated,
     StackMove? moveable,
+    StackResize? resizable,
     Widget? child,
   }) {
     return StackPosition._(
@@ -124,18 +136,19 @@ class StackPosition extends StatefulWidget {
       onDataUpdated: onDataUpdated,
       builder: builder,
       scaleFactor: scaleFactor,
-      moveable: moveable ?? const StackMove(enable: false),
+      moveable: moveable,
+      resizable: resizable,
       child: child,
     );
   }
 
   final double scaleFactor;
   final StackPositionData data;
-  final void Function(StackPositionData oldValue, StackPositionData newValue)?
-      onDataUpdated;
+  final void Function(StackPositionData newValue)? onDataUpdated;
   final StackPositionWidgetBuilder builder;
   final Widget? child;
-  final StackMove moveable;
+  final StackMove? moveable;
+  final StackResize? resizable;
 
   _StackPositionState? get state =>
       (key as GlobalKey).currentState as _StackPositionState?;
@@ -150,15 +163,13 @@ class _StackPositionState extends State<StackPosition>
   bool get wantKeepAlive => notifier.value.keepAlive;
 
   late var notifier = ValueNotifier<StackPositionData>(widget.data);
-  late StackPositionData oldData = notifier.value;
 
   Offset initialLocalPosition = Offset.zero;
   Offset initialOffset = Offset.zero;
 
   void onDataUpdated() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      widget.onDataUpdated?.call(oldData, notifier.value);
-      oldData = notifier.value;
+      widget.onDataUpdated?.call(notifier.value);
     });
   }
 
@@ -210,7 +221,7 @@ class _StackPositionState extends State<StackPosition>
       },
       onPanUpdate: (details) {
         final delta = details.localPosition - initialLocalPosition;
-        if (widget.moveable.snap case final snap?) {
+        if (widget.moveable?.snap case final snap?) {
           final snapInitialOffset = Offset(
             (initialOffset.dx / snap.widthSnap).round() * snap.widthSnap,
             (initialOffset.dy / snap.heightSnap).round() * snap.heightSnap,
@@ -237,51 +248,66 @@ class _StackPositionState extends State<StackPosition>
   Widget build(BuildContext context) {
     super.build(context);
     return LayoutBuilder(
-      builder: (context, constraints) => Align(
-        alignment: Alignment.topLeft,
-        child: SizedBox(
-          height: notifier.value.height ?? constraints.maxHeight,
-          width: notifier.value.width ?? constraints.maxWidth,
-          child: Transform.scale(
-            transformHitTests: true,
-            scale: widget.scaleFactor,
-            alignment: Alignment.topLeft,
-            child: switch (widget.moveable.enable) {
-              false => widget.builder(context, notifier, widget.child),
-              true => moveable(
-                  child: widget.builder(context, notifier, widget.child),
-                ),
-            },
+      builder: (context, constraints) {
+        Widget child = widget.builder(context, notifier, widget.child);
+        if (widget.moveable != null) {
+          child = moveable(child: child);
+        }
+        if (widget.resizable case final resizable?) {
+          child = _ResizableStackPosition(
+            notifier: notifier,
+            thumb: resizable.thumb,
+            child: child,
+            height: resizable.height,
+            scaleFactor: widget.scaleFactor,
+          );
+        }
+
+        return Align(
+          alignment: Alignment.topLeft,
+          child: SizedBox(
+            height: notifier.value.height ?? constraints.maxHeight,
+            width: notifier.value.width ?? constraints.maxWidth,
+            child: Transform.scale(
+              transformHitTests: true,
+              scale: widget.scaleFactor,
+              alignment: Alignment.topLeft,
+              child: child,
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
 
-class ResizableStackPosition extends StatefulWidget {
-  const ResizableStackPosition({
-    super.key,
+class _ResizableStackPosition extends StatefulWidget {
+  const _ResizableStackPosition({
     required this.notifier,
-    required this.onSizeChanged,
+    required this.scaleFactor,
     required this.thumb,
     required this.child,
     required this.height,
   });
 
   final ValueNotifier<StackPositionData> notifier;
-  final void Function(Size size) onSizeChanged;
+  final double scaleFactor;
 
   final double? height;
   final Widget thumb;
   final Widget child;
 
   @override
-  State<ResizableStackPosition> createState() => _ResizableStackPositionState();
+  State<_ResizableStackPosition> createState() =>
+      _ResizableStackPositionState();
 }
 
-class _ResizableStackPositionState extends State<ResizableStackPosition> {
-  Size? miminumSize;
+class _ResizableStackPositionState extends State<_ResizableStackPosition> {
+  Size? initialSize;
+  Size startSize = Size.zero;
+  Offset startOffset = Offset.zero;
+  double? get height => widget.notifier.value.height;
+  double? get width => widget.notifier.value.width;
 
   @override
   Widget build(BuildContext context) {
@@ -289,40 +315,40 @@ class _ResizableStackPositionState extends State<ResizableStackPosition> {
       alignment: Alignment.topLeft,
       child: CustomBoxy(
         delegate: _ResizableStackPositionDelegate(
+          onSizeChanged: (size) {
+            if (height == size) return;
+            WidgetsBinding.instance.addPostFrameCallback(
+              (_) {
+                widget.notifier.value = widget.notifier.value.copyWith(
+                  height: size.height,
+                  width: size.width,
+                );
+              },
+            );
+          },
           thumb: (size) {
-            if (miminumSize == null && widget.height == null) {
-              miminumSize = size;
+            if (initialSize == null && widget.height == null) {
+              initialSize = size;
             }
             return GestureDetector(
-              supportedDevices: {
-                PointerDeviceKind.touch,
-                PointerDeviceKind.mouse,
-              },
+              supportedDevices: {...PointerDeviceKind.values}
+                ..remove(PointerDeviceKind.trackpad),
               trackpadScrollCausesScale: false,
+              onPanStart: (details) {
+                startSize = Size(
+                  widget.notifier.value.width ?? size.width,
+                  widget.notifier.value.height ?? size.height,
+                );
+                startOffset = details.globalPosition;
+              },
               onPanUpdate: (details) {
-                var newHeight = (widget.notifier.value.height ?? size.height) +
-                    details.delta.dy;
-                var newWidth = (widget.notifier.value.width ?? size.width) +
-                    details.delta.dx;
-
-                newHeight = newHeight.clamp(
-                  miminumSize?.height ?? 40,
-                  double.infinity,
-                );
-                newWidth = newWidth.clamp(
-                  200,
-                  double.infinity,
-                );
+                final delta = (details.globalPosition - startOffset) / widget.scaleFactor;
+                var newWidth = startSize.width + delta.dx;
+                var newHeight = startSize.height + delta.dy;
 
                 widget.notifier.value = widget.notifier.value.copyWith(
-                  height: newHeight,
-                  width: newWidth,
-                );
-                widget.onSizeChanged(
-                  Size(
-                    widget.notifier.value.width!,
-                    widget.notifier.value.height!,
-                  ),
+                  width: max(40, newWidth),
+                  height: max(40, newHeight),
                 );
               },
               child: widget.thumb,
@@ -336,8 +362,8 @@ class _ResizableStackPositionState extends State<ResizableStackPosition> {
               null => IntrinsicHeight(child: widget.child),
               _ => ConstrainedBox(
                   constraints: BoxConstraints(
-                    minHeight: miminumSize?.height ?? 40,
-                    minWidth: miminumSize?.width ?? 40,
+                    minHeight: initialSize?.height ?? 40,
+                    minWidth: initialSize?.width ?? 40,
                   ),
                   child: widget.child,
                 ),
@@ -352,8 +378,10 @@ class _ResizableStackPositionState extends State<ResizableStackPosition> {
 class _ResizableStackPositionDelegate extends BoxyDelegate {
   _ResizableStackPositionDelegate({
     required this.thumb,
+    required this.onSizeChanged,
   });
 
+  final void Function(Size size) onSizeChanged;
   final Widget Function(Size size) thumb;
 
   @override
@@ -367,6 +395,8 @@ class _ResizableStackPositionDelegate extends BoxyDelegate {
       alignment: Alignment.bottomRight,
       child: thumb(firstSize),
     );
+
+    onSizeChanged(firstSize);
 
     // Inflate the text widget
     var secondChild = inflate(child, id: #second);
