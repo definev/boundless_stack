@@ -182,7 +182,7 @@ class _StackPositionState extends State<StackPosition>
   @override
   void dispose() {
     super.dispose();
-    notifier.dispose();
+    if (widget.onDataUpdated != null) notifier.removeListener(onDataUpdated);
   }
 
   @override
@@ -203,9 +203,7 @@ class _StackPositionState extends State<StackPosition>
     }
   }
 
-  Widget moveable({
-    required Widget child,
-  }) {
+  Widget moveable({required Widget child}) {
     return GestureDetector(
       supportedDevices: {...PointerDeviceKind.values}
         ..remove(PointerDeviceKind.trackpad),
@@ -220,6 +218,7 @@ class _StackPositionState extends State<StackPosition>
         }
       },
       onPanUpdate: (details) {
+        StackPositionData newValue;
         final delta = details.localPosition - initialLocalPosition;
         if (widget.moveable?.snap case final snap?) {
           final snapInitialOffset = Offset(
@@ -231,14 +230,17 @@ class _StackPositionState extends State<StackPosition>
             (delta.dy / snap.heightSnap).round() * snap.heightSnap,
           );
 
-          notifier.value = notifier.value.copyWith(
+          newValue = notifier.value.copyWith(
             offset: snapInitialOffset + snapOffset,
           );
         } else {
-          notifier.value = notifier.value.copyWith(
+          newValue = notifier.value.copyWith(
             offset: initialOffset + delta,
           );
         }
+
+        notifier.value = newValue;
+        widget.onDataUpdated?.call(newValue);
       },
       child: child,
     );
@@ -257,9 +259,9 @@ class _StackPositionState extends State<StackPosition>
           child = _ResizableStackPosition(
             notifier: notifier,
             thumb: resizable.thumb,
-            child: child,
             height: resizable.height,
             scaleFactor: widget.scaleFactor,
+            child: child,
           );
         }
 
@@ -316,15 +318,23 @@ class _ResizableStackPositionState extends State<_ResizableStackPosition> {
       child: CustomBoxy(
         delegate: _ResizableStackPositionDelegate(
           onSizeChanged: (size) {
-            if (height == size) return;
-            WidgetsBinding.instance.addPostFrameCallback(
-              (_) {
-                widget.notifier.value = widget.notifier.value.copyWith(
+            void updateSize() {
+              WidgetsBinding.instance.addPostFrameCallback(
+                (_) => widget.notifier.value = widget.notifier.value.copyWith(
                   height: size.height,
                   width: size.width,
-                );
-              },
-            );
+                ),
+              );
+            }
+
+            if (widget.height == null) {
+              updateSize();
+              return;
+            }
+            if (!(size.height == height && size.width == width)) {
+              updateSize();
+              return;
+            }
           },
           thumb: (size) {
             if (initialSize == null && widget.height == null) {
@@ -342,7 +352,8 @@ class _ResizableStackPositionState extends State<_ResizableStackPosition> {
                 startOffset = details.globalPosition;
               },
               onPanUpdate: (details) {
-                final delta = (details.globalPosition - startOffset) / widget.scaleFactor;
+                final delta =
+                    (details.globalPosition - startOffset) / widget.scaleFactor;
                 var newWidth = startSize.width + delta.dx;
                 var newHeight = startSize.height + delta.dy;
 
