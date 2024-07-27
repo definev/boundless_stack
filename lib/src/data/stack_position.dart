@@ -7,12 +7,36 @@ import 'package:flutter/widgets.dart';
 
 class StackResize {
   const StackResize({
+    required this.width,
+    required this.preferredWidth,
     required this.height,
-    required this.thumb,
+    required this.preferredHeight,
+    this.preferredOverFixedSize = false,
+    this.thumb,
+    this.onSizeChanged,
   });
 
+  final bool preferredOverFixedSize;
+
+  /// The width of the widget
+  final double? width;
+
+  /// The preferred width of the widget
+  final double? preferredWidth;
+
+  /// The height of the widget
   final double? height;
-  final Widget thumb;
+
+  /// The preferred height of the widget
+  final double? preferredHeight;
+
+  /// This will be the thumb widget that will be used to resize the widget
+  final Widget? thumb;
+
+  /// This will call when the size is changed by user action
+  ///
+  /// So it update the notifier already dont need to call notifier.value = newValue
+  final ValueChanged<Size>? onSizeChanged;
 }
 
 /// Movable
@@ -49,7 +73,9 @@ class StackPositionData with EquatableMixin {
     required this.offset,
     this.keepAlive = false,
     this.width,
+    this.preferredWidth,
     this.height,
+    this.preferredHeight,
   });
 
   factory StackPositionData({
@@ -57,7 +83,9 @@ class StackPositionData with EquatableMixin {
     required int layer,
     required Offset offset,
     double? width,
+    double? preferredWidth,
     double? height,
+    double? preferredHeight,
     bool keepAlive = false,
   }) {
     return StackPositionData._(
@@ -65,7 +93,9 @@ class StackPositionData with EquatableMixin {
       layer: layer,
       offset: offset,
       width: width,
+      preferredWidth: preferredWidth,
       height: height,
+      preferredHeight: preferredHeight,
       keepAlive: keepAlive,
     );
   }
@@ -75,12 +105,23 @@ class StackPositionData with EquatableMixin {
   final Offset offset;
 
   final double? width;
+  final double? preferredWidth;
   final double? height;
+  final double? preferredHeight;
 
   final bool keepAlive;
 
   @override
-  List<Object?> get props => [id, layer, offset, width, height, keepAlive];
+  List<Object?> get props => [
+        id,
+        layer,
+        offset,
+        width,
+        preferredWidth,
+        height,
+        preferredHeight,
+        keepAlive
+      ];
 
   Offset calculateScaledOffset(double scaleFactor) => offset * scaleFactor;
 
@@ -88,7 +129,9 @@ class StackPositionData with EquatableMixin {
     int? layer,
     Offset? offset,
     double? width,
+    double? preferredWidth,
     double? height,
+    double? preferredHeight,
     bool? keepAlive,
   }) {
     return StackPositionData(
@@ -96,7 +139,9 @@ class StackPositionData with EquatableMixin {
       layer: layer ?? this.layer,
       offset: offset ?? this.offset,
       width: width ?? this.width,
+      preferredWidth: preferredWidth ?? this.preferredWidth,
       height: height ?? this.height,
+      preferredHeight: preferredHeight ?? this.preferredHeight,
       keepAlive: keepAlive ?? this.keepAlive,
     );
   }
@@ -116,8 +161,8 @@ class StackPosition extends StatefulWidget {
     required this.builder,
     required this.child,
     this.onDataUpdated,
-    this.moveable = null,
-    this.resizable = null,
+    this.moveable,
+    this.resizable,
   });
 
   factory StackPosition({
@@ -255,12 +300,39 @@ class _StackPositionState extends State<StackPosition>
         if (widget.moveable != null) {
           child = moveable(child: child);
         }
+
         if (widget.resizable case final resizable?) {
           child = _ResizableStackPosition(
             notifier: notifier,
-            thumb: resizable.thumb,
-            height: resizable.height,
             scaleFactor: widget.scaleFactor,
+
+            /// Constraints for the widget
+            preferredOverFixedSize: resizable.preferredOverFixedSize,
+            width: resizable.width,
+            preferredWidth: resizable.preferredWidth,
+            height: resizable.height,
+            preferredHeight: resizable.preferredHeight,
+
+            ///
+            onSizeChanged: resizable.onSizeChanged,
+            thumb: resizable.thumb,
+            child: child,
+          );
+        } else {
+          child = _ResizableStackPosition(
+            notifier: notifier,
+            scaleFactor: widget.scaleFactor,
+
+            /// Constraints for the widget
+            preferredOverFixedSize: true,
+            width: notifier.value.width,
+            preferredWidth: notifier.value.preferredWidth,
+            height: notifier.value.height,
+            preferredHeight: notifier.value.preferredHeight,
+
+            /// This will call when the size is changed by user action
+            thumb: null,
+            onSizeChanged: null,
             child: child,
           );
         }
@@ -289,15 +361,28 @@ class _ResizableStackPosition extends StatefulWidget {
     required this.scaleFactor,
     required this.thumb,
     required this.child,
+    required this.width,
+    required this.preferredWidth,
     required this.height,
+    required this.preferredHeight,
+    required this.onSizeChanged,
+    required this.preferredOverFixedSize,
   });
 
   final ValueNotifier<StackPositionData> notifier;
   final double scaleFactor;
 
+  final bool preferredOverFixedSize;
+
+  /// Constraints for the widget
+  final double? width;
+  final double? preferredWidth;
   final double? height;
-  final Widget thumb;
+  final double? preferredHeight;
+
+  final Widget? thumb;
   final Widget child;
+  final void Function(Size size)? onSizeChanged;
 
   @override
   State<_ResizableStackPosition> createState() =>
@@ -305,11 +390,10 @@ class _ResizableStackPosition extends StatefulWidget {
 }
 
 class _ResizableStackPositionState extends State<_ResizableStackPosition> {
-  Size? initialSize;
   Size startSize = Size.zero;
   Offset startOffset = Offset.zero;
-  double? get height => widget.notifier.value.height;
-  double? get width => widget.notifier.value.width;
+
+  StackPositionData get data => widget.notifier.value;
 
   @override
   Widget build(BuildContext context) {
@@ -318,67 +402,82 @@ class _ResizableStackPositionState extends State<_ResizableStackPosition> {
       child: CustomBoxy(
         delegate: _ResizableStackPositionDelegate(
           onSizeChanged: (size) {
-            void updateSize() {
-              WidgetsBinding.instance.addPostFrameCallback(
-                (_) => widget.notifier.value = widget.notifier.value.copyWith(
-                  height: size.height,
-                  width: size.width,
-                ),
-              );
-            }
+            bool usePreferredWidth =
+                widget.width == null || widget.preferredOverFixedSize;
+            bool usePreferredHeight =
+                widget.height == null || widget.preferredOverFixedSize;
 
-            if (widget.height == null) {
-              updateSize();
-              return;
-            }
-            if (!(size.height == height && size.width == width)) {
-              updateSize();
-              return;
-            }
+            double width = switch (usePreferredWidth) {
+              true => widget.preferredWidth ?? size.width,
+              false => widget.width ?? size.width,
+            };
+            double height = switch (usePreferredHeight) {
+              true => size.height,
+              false => widget.height ?? size.height,
+            };
+
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              bool needUpdate = false;
+              var newData = data.copyWith();
+              if (usePreferredHeight) {
+                if (newData.preferredHeight != height) {
+                  newData = newData.copyWith(preferredHeight: height);
+                  needUpdate = true;
+                }
+              } else {
+                if (newData.height != height) {
+                  newData = newData.copyWith(height: height);
+                  needUpdate = true;
+                }
+              }
+              if (usePreferredWidth) {
+                if (newData.preferredWidth != width) {
+                  newData = newData.copyWith(preferredWidth: width);
+                  needUpdate = true;
+                }
+              } else {
+                if (newData.width != width) {
+                  newData = newData.copyWith(width: width);
+                  needUpdate = true;
+                }
+              }
+              if (needUpdate) {
+                widget.notifier.value = newData;
+              }
+            });
           },
-          thumb: (size) {
-            if (initialSize == null && widget.height == null) {
-              initialSize = size;
-            }
-            return GestureDetector(
-              supportedDevices: {...PointerDeviceKind.values}
-                ..remove(PointerDeviceKind.trackpad),
-              trackpadScrollCausesScale: false,
-              onPanStart: (details) {
-                startSize = Size(
-                  widget.notifier.value.width ?? size.width,
-                  widget.notifier.value.height ?? size.height,
-                );
-                startOffset = details.globalPosition;
-              },
-              onPanUpdate: (details) {
-                final delta =
-                    (details.globalPosition - startOffset) / widget.scaleFactor;
-                var newWidth = startSize.width + delta.dx;
-                var newHeight = startSize.height + delta.dy;
+          thumbBuilder: switch (widget.thumb) {
+            final thumb? => (size) {
+                return GestureDetector(
+                  supportedDevices: {...PointerDeviceKind.values}
+                    ..remove(PointerDeviceKind.trackpad),
+                  trackpadScrollCausesScale: false,
+                  onPanStart: (details) {
+                    startSize = Size(
+                      widget.notifier.value.width ?? size.width,
+                      widget.notifier.value.height ?? size.height,
+                    );
+                    startOffset = details.globalPosition;
+                  },
+                  onPanUpdate: (details) {
+                    final delta = (details.globalPosition - startOffset) /
+                        widget.scaleFactor;
+                    double? newPreferredWidth = max(100.0, startSize.width + delta.dx);
 
-                widget.notifier.value = widget.notifier.value.copyWith(
-                  width: max(40, newWidth),
-                  height: max(40, newHeight),
+                    widget.notifier.value = widget.notifier.value.copyWith(
+                      preferredWidth: newPreferredWidth,
+                    );
+                  },
+                  child: thumb,
                 );
               },
-              child: widget.thumb,
-            );
+            null => null,
           },
         ),
         children: [
           BoxyId(
             id: #_child,
-            child: switch (widget.height) {
-              null => IntrinsicHeight(child: widget.child),
-              _ => ConstrainedBox(
-                  constraints: BoxConstraints(
-                    minHeight: initialSize?.height ?? 40,
-                    minWidth: initialSize?.width ?? 40,
-                  ),
-                  child: widget.child,
-                ),
-            },
+            child: widget.child,
           ),
         ],
       ),
@@ -388,12 +487,12 @@ class _ResizableStackPositionState extends State<_ResizableStackPosition> {
 
 class _ResizableStackPositionDelegate extends BoxyDelegate {
   _ResizableStackPositionDelegate({
-    required this.thumb,
+    required this.thumbBuilder,
     required this.onSizeChanged,
   });
 
   final void Function(Size size) onSizeChanged;
-  final Widget Function(Size size) thumb;
+  final Widget Function(Size size)? thumbBuilder;
 
   @override
   Size layout() {
@@ -402,9 +501,14 @@ class _ResizableStackPositionDelegate extends BoxyDelegate {
     var firstSize = firstChild.layout(constraints);
     firstChild.position(Offset.zero);
 
+    if (thumbBuilder == null) {
+      onSizeChanged(firstSize);
+      return firstSize;
+    }
+
     var child = Align(
       alignment: Alignment.bottomRight,
-      child: thumb(firstSize),
+      child: thumbBuilder!(firstSize),
     );
 
     onSizeChanged(firstSize);

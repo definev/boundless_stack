@@ -111,8 +111,8 @@ class RenderBoundlessStackViewport extends RenderTwoDimensionalViewport {
     double viewportHeight = viewportDimension.height + cacheExtent;
 
     final Offset actualOffset = data.calculateScaledOffset(scaleFactor);
-    final double width = data.width ?? constraints.maxWidth;
-    final double height = data.height ?? constraints.maxHeight;
+    final double width = data.width ?? data.preferredWidth ?? constraints.maxWidth;
+    final double height = data.height ?? data.preferredHeight ?? constraints.maxHeight;
 
     return !(actualOffset.dx > horizontalPixels + viewportWidth ||
         actualOffset.dx + width < horizontalPixels ||
