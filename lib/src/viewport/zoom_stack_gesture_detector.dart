@@ -22,7 +22,7 @@ class _Debouncer {
 }
 
 final logger = SimpleLogger(
-    // Optionally, specify a log level (defaults to Level.info).
+    // Optionally, specify a log level (defaults to Level.debug).
     // Optionally, specify a custom `LogTheme` to override log styles.
     );
 
@@ -73,7 +73,6 @@ class _ZoomStackGestureDetectorState extends State<ZoomStackGestureDetector>
   }
 
   void move(Offset offset) {
-    logger.info('ZoomStackGestureDetector: move | offset: $offset');
     final topLeft = this.topLeft;
     stack.horizontalDetails.controller!.jumpTo(topLeft.dx + offset.dx);
     stack.verticalDetails.controller!.jumpTo(topLeft.dy + offset.dy);
@@ -105,7 +104,6 @@ class _ZoomStackGestureDetectorState extends State<ZoomStackGestureDetector>
     _scaleStart = null;
   }
 
-
   final _Debouncer _debouncer = _Debouncer(milliseconds: 100);
 
   @override
@@ -118,8 +116,6 @@ class _ZoomStackGestureDetectorState extends State<ZoomStackGestureDetector>
     return Listener(
       onPointerSignal: (event) {
         if (event is PointerScaleEvent) {
-          logger.info(
-              'ZoomStackGestureDetector: receive PointerScaleEvent | kind: ${event.kind} || at: ${event.position}');
           onScaleStart(ScaleStartDetails(localFocalPoint: event.localPosition));
           onScaleUpdate(
             ScaleUpdateDetails(
@@ -131,8 +127,6 @@ class _ZoomStackGestureDetectorState extends State<ZoomStackGestureDetector>
           onScaleEnd(ScaleEndDetails());
         }
         if (event is PointerScrollEvent) {
-          logger.info(
-              'ZoomStackGestureDetector: receive PointerScrollEvent | kind: ${event.kind} || at: ${event.position}');
           _stackKey.currentState?.overrideScrollBehavior();
           move(event.scrollDelta);
           _debouncer.run(() => _stackKey.currentState?.restoreScrollBehavior());
@@ -146,19 +140,13 @@ class _ZoomStackGestureDetectorState extends State<ZoomStackGestureDetector>
             (ScaleGestureRecognizer instance) {
               instance
                 ..onStart = (details) {
-                  logger.info(
-                      'ZoomStackGestureDetector: onStart | pointerCount: ${details.pointerCount}');
                   widget.onScaleStart?.call();
                   onScaleStart(details);
                 }
                 ..onUpdate = (details) {
-                  logger.info(
-                      'ZoomStackGestureDetector: onUpdate | pointerCount: ${details.pointerCount}');
                   onScaleUpdate(details);
                 }
                 ..onEnd = (details) {
-                  logger.info(
-                      'ZoomStackGestureDetector: onEnd | scaleVelocity: ${details.scaleVelocity}');
                   widget.onScaleEnd?.call();
                   onScaleEnd(details);
                 }
