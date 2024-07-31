@@ -117,8 +117,8 @@ class StackPositionData with EquatableMixin {
         layer,
         offset,
         width,
-        preferredWidth,
         height,
+        preferredWidth,
         preferredHeight,
         keepAlive
       ];
@@ -145,6 +145,9 @@ class StackPositionData with EquatableMixin {
       keepAlive: keepAlive ?? this.keepAlive,
     );
   }
+
+  @override
+  String toString() => 'StackPositionData(id: $id, layer: $layer, offset: $offset, width: $width, height: $height, preferredWidth: $preferredWidth, preferredHeight: $preferredHeight, keepAlive: $keepAlive)';
 }
 
 typedef StackPositionWidgetBuilder = Widget Function(
@@ -462,7 +465,8 @@ class _ResizableStackPositionState extends State<_ResizableStackPosition> {
                   onPanUpdate: (details) {
                     final delta = (details.globalPosition - startOffset) /
                         widget.scaleFactor;
-                    double? newPreferredWidth = max(100.0, startSize.width + delta.dx);
+                    double? newPreferredWidth =
+                        max(100.0, startSize.width + delta.dx);
 
                     widget.notifier.value = widget.notifier.value.copyWith(
                       preferredWidth: newPreferredWidth,
