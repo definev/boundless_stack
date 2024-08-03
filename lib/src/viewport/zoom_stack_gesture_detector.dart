@@ -30,8 +30,7 @@ class ZoomStackGestureDetector extends StatefulWidget {
   const ZoomStackGestureDetector({
     super.key,
     this.scaleFactor = 0.5,
-    required this.enableMoveByMouse,
-    required this.enableMoveByTouch,
+    required this.supportedDevices,
     required this.onScaleFactorChanged,
     required this.stack,
     this.onScaleStart,
@@ -46,8 +45,7 @@ class ZoomStackGestureDetector extends StatefulWidget {
   final ValueChanged<double> onScaleFactorChanged;
   final VoidCallback? onScaleStart;
   final VoidCallback? onScaleEnd;
-  final bool enableMoveByMouse;
-  final bool enableMoveByTouch;
+  final Set<PointerDeviceKind> supportedDevices;
 
   @override
   State<ZoomStackGestureDetector> createState() =>
@@ -150,14 +148,7 @@ class _ZoomStackGestureDetectorState extends State<ZoomStackGestureDetector>
                   widget.onScaleEnd?.call();
                   onScaleEnd(details);
                 }
-                ..supportedDevices = {
-                  if (widget.enableMoveByMouse) PointerDeviceKind.mouse,
-                  if (widget.enableMoveByTouch) PointerDeviceKind.touch,
-                  // PointerDeviceKind.invertedStylus,
-                  // PointerDeviceKind.stylus,
-                  // PointerDeviceKind.trackpad,
-                  // PointerDeviceKind.unknown,
-                };
+                ..supportedDevices = widget.supportedDevices;
             },
           ),
         },

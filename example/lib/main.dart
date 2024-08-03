@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'dart:ui';
 
 import 'package:boundless_stack/boundless_stack.dart';
 import 'package:flutter/material.dart';
@@ -66,8 +67,7 @@ class _HomeViewState extends State<HomeView> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: ZoomStackGestureDetector(
-        enableMoveByTouch: true,
-        enableMoveByMouse: true,
+        supportedDevices: const {...PointerDeviceKind.values},
         onScaleFactorChanged: (scaleFactor) =>
             setState(() => this.scaleFactor = scaleFactor),
         scaleFactor: scaleFactor,
