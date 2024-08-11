@@ -4,7 +4,10 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 
 class BoundlessStackDelegate extends TwoDimensionalChildDelegate {
-  BoundlessStackDelegate({required this.childrenBuilder});
+  BoundlessStackDelegate({
+    required this.childrenBuilder,
+    this.layerSorted = false,
+  });
 
   final List<StackPosition> Function(
     ViewportOffset verticalOffset,
@@ -16,7 +19,7 @@ class BoundlessStackDelegate extends TwoDimensionalChildDelegate {
     _viewport = value;
   }
 
-  double? scaleFactor;
+  final bool layerSorted;
 
   @override
   Widget? build(BuildContext context, covariant ChildVicinity vicinity) {
@@ -29,7 +32,6 @@ class BoundlessStackDelegate extends TwoDimensionalChildDelegate {
 
   @override
   bool shouldRebuild(BoundlessStackDelegate oldDelegate) =>
-      scaleFactor != oldDelegate.scaleFactor ||
       childrenBuilder != oldDelegate.childrenBuilder;
 }
 

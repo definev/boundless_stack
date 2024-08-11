@@ -3,8 +3,14 @@ import 'package:boundless_stack/src/delegate/boundless_stack_delegate.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 
-class VicinityManager {
-  VicinityManager();
+abstract class VicinityManager<IDType> {
+  ChildVicinity produceVicinity(int layer, IDType id);
+  ChildVicinity? getVicinity(String id);
+  void dispose();
+}
+
+class MapVicinityManager implements VicinityManager<String> {
+  MapVicinityManager();
 
   /// The first axis is [layer] and the second axis is [id] of the child.
   final Map<String, ChildVicinity> _vicinities = {};
@@ -12,11 +18,13 @@ class VicinityManager {
   /// The highest [ChildVicinity] in the [layer] axis.
   final Map<int, ChildVicinity> _highestVicinities = {};
 
+  @override
   void dispose() {
     _vicinities.clear();
     _highestVicinities.clear();
   }
 
+  @override
   ChildVicinity produceVicinity(int layer, String id) {
     final vicinity = _highestVicinities[layer];
     final newVicinity = ChildVicinity(
@@ -28,6 +36,7 @@ class VicinityManager {
     return newVicinity;
   }
 
+  @override
   ChildVicinity? getVicinity(String id) {
     return _vicinities[id];
   }
@@ -44,10 +53,23 @@ class RenderBoundlessStackViewport extends RenderTwoDimensionalViewport {
     required super.childManager,
     required double scaleFactor,
     required Size biggest,
+    required bool cacheStackPosition,
     super.cacheExtent,
     super.clipBehavior,
   })  : _scaleFactor = scaleFactor,
+        _cacheStackPosition = cacheStackPosition,
         _biggest = biggest;
+
+  bool _cacheStackPosition;
+  bool get cacheStackPosition => _cacheStackPosition;
+  set cacheStackPosition(bool value) {
+    if (_cacheStackPosition == value) return;
+    _cacheStackPosition = value;
+    if (!value) {
+      _cachedStackPositionData?.clear();
+      _cachedStackPositionData = null;
+    }
+  }
 
   Size _biggest;
   Size get biggest => _biggest;
@@ -62,14 +84,16 @@ class RenderBoundlessStackViewport extends RenderTwoDimensionalViewport {
   set scaleFactor(double value) {
     if (_scaleFactor == value) return;
     _scaleFactor = value;
-    markNeedsChildrenRelayout();
+    markNeedsLayout();
   }
 
   Map<ChildVicinity, Widget>? childWidgets = {};
   List<ValueNotifier<StackPositionData>>? _stackPositionNotifiers = [];
   Map<String, StackPositionData>? _cachedStackPositionData = {};
+  Map<String, StackPositionData>? _newCachedStackPositionData = {};
+
   List<RenderBox>? _linearChildren = [];
-  VicinityManager? vicinityManager = VicinityManager();
+  VicinityManager? vicinityManager = MapVicinityManager();
 
   bool _needsRelayoutChildren = true;
   void markNeedsChildrenRelayout() {
@@ -87,6 +111,8 @@ class RenderBoundlessStackViewport extends RenderTwoDimensionalViewport {
     _stackPositionNotifiers = null;
     _cachedStackPositionData?.clear();
     _cachedStackPositionData = null;
+    _newCachedStackPositionData?.clear();
+    _newCachedStackPositionData = null;
     _linearChildren = null;
     super.dispose();
   }
@@ -111,8 +137,8 @@ class RenderBoundlessStackViewport extends RenderTwoDimensionalViewport {
     double viewportHeight = viewportDimension.height + cacheExtent;
 
     final Offset actualOffset = data.calculateScaledOffset(scaleFactor);
-    final double width = data.width ?? data.preferredWidth ?? constraints.maxWidth;
-    final double height = data.height ?? data.preferredHeight ?? constraints.maxHeight;
+    final double width = data.width ?? data.preferredWidth ?? biggest.width;
+    final double height = data.height ?? data.preferredHeight ?? biggest.height;
 
     return !(actualOffset.dx > horizontalPixels + viewportWidth ||
         actualOffset.dx + width < horizontalPixels ||
@@ -124,6 +150,7 @@ class RenderBoundlessStackViewport extends RenderTwoDimensionalViewport {
     if (buildOrObtainChildFor(const ChildVicinity(xIndex: 0, yIndex: 0))
         case final placeholder?) {
       placeholder.layout(BoxConstraints.tight(Size.zero));
+
       parentDataOf(placeholder).layoutOffset = Offset(
         horizontalOffset.pixels,
         verticalOffset.pixels,
@@ -164,6 +191,8 @@ class RenderBoundlessStackViewport extends RenderTwoDimensionalViewport {
     if (oldData.layer != newData.layer) return true;
     if (oldData.width != newData.width) return true;
     if (oldData.height != newData.height) return true;
+    if (oldData.preferredHeight != newData.preferredHeight) return true;
+    if (oldData.preferredWidth != newData.preferredWidth) return true;
 
     return false;
   }
@@ -174,15 +203,18 @@ class RenderBoundlessStackViewport extends RenderTwoDimensionalViewport {
 
     _linearChildren = null;
     _linearChildren = [];
-    for (final notifier in _stackPositionNotifiers ?? []) {
+    for (final notifier
+        in _stackPositionNotifiers ?? <ValueNotifier<StackPositionData>>[]) {
       notifier.removeListener(markNeedsLayout);
     }
+    if (_cacheStackPosition) {
+      _newCachedStackPositionData?.clear();
+    }
+
     _stackPositionNotifiers = null;
     _stackPositionNotifiers = [];
     childWidgets = null;
     childWidgets = {};
-
-    Map<String, StackPositionData> newCachedStackPositionData = {};
 
     setBoundary();
 
@@ -191,61 +223,70 @@ class RenderBoundlessStackViewport extends RenderTwoDimensionalViewport {
 
     final builderDelegate = delegate as BoundlessStackDelegate;
     builderDelegate.viewport = this;
-    builderDelegate.scaleFactor = scaleFactor;
 
-    final children = builderDelegate.childrenBuilder(
+    List<StackPosition> children = builderDelegate.childrenBuilder(
       verticalOffset,
       horizontalOffset,
-    )..sort((a, b) => a.data.layer.compareTo(b.data.layer));
+    );
+    if (builderDelegate.layerSorted == false) {
+      children.sort((a, b) => a.data.layer.compareTo(b.data.layer));
+    }
 
     for (final child in children) {
-      final data = child.state?.notifier.value ?? child.data;
+      StackPositionData data;
+      if (child.state?.notifier.value case final value?) {
+        data = value;
+      } else {
+        data = child.data;
+      }
       // index must increase by 1 incase it conflicts with the placeholder child
       var vicinity = vicinityManager!.getVicinity(data.id);
       vicinity ??= vicinityManager!.produceVicinity(data.layer, data.id);
       childWidgets![vicinity] = child;
 
       final isInViewport = stackPositionInViewport(data);
+      if (!isInViewport) continue;
 
-      if (isInViewport) {
-        if (buildOrObtainChildFor(vicinity) case final renderBox?) {
-          _linearChildren!.add(renderBox);
-          final notifier = child.state?.notifier;
-          notifier?.addListener(markNeedsLayout);
+      if (buildOrObtainChildFor(vicinity) case final renderBox?) {
+        _linearChildren!.add(renderBox);
+        final notifier = child.state?.notifier;
+        if (notifier != null) {
+          notifier.addListener(markNeedsLayout);
+          _stackPositionNotifiers!.add(notifier);
+        }
 
-          if (notifier != null) _stackPositionNotifiers!.add(notifier);
+        bool needsLayout = true;
 
-          bool needsLayout = false;
-
-          if (data.id case final id) {
-            final oldData = _cachedStackPositionData?[id];
-            if (oldData == null) {
+        if (_cacheStackPosition) {
+          final oldData = _cachedStackPositionData?[data.id];
+          _newCachedStackPositionData?[data.id] = data;
+          if (oldData != null) {
+            if (_checkIfDataChangeAffectedLayout(oldData, data)) {
               needsLayout = true;
             } else {
-              if (_checkIfDataChangeAffectedLayout(oldData, data)) {
-                newCachedStackPositionData[id] = data;
-                needsLayout = true;
-              }
+              needsLayout = false;
             }
           }
-
-          needsLayout = needsLayout || _needsRelayoutChildren;
-
-          if (needsLayout) {
-            renderBox.layout(calculateScaledConstraints(data, scaleFactor));
-          }
-
-          final parentData = parentDataOf(renderBox);
-          parentData.layoutOffset = data.calculateScaledOffset(scaleFactor) -
-              Offset(
-                horizontalOffset.pixels,
-                verticalOffset.pixels,
-              );
         }
+
+        needsLayout = needsLayout || _needsRelayoutChildren;
+
+        if (needsLayout) {
+          renderBox.layout(calculateScaledConstraints(data, scaleFactor));
+        }
+
+        final parentData = parentDataOf(renderBox);
+        parentData.layoutOffset = data.calculateScaledOffset(scaleFactor) -
+            Offset(
+              horizontalOffset.pixels,
+              verticalOffset.pixels,
+            );
       }
     }
 
-    _cachedStackPositionData = newCachedStackPositionData;
+    if (_cacheStackPosition) {
+      _cachedStackPositionData = _newCachedStackPositionData;
+    }
     _needsRelayoutChildren = false;
   }
 

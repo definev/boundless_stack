@@ -10,12 +10,13 @@ import 'delegate/boundless_stack_delegate.dart';
 class BoundlessStackScrollView extends TwoDimensionalScrollView {
   const BoundlessStackScrollView({
     this.scaleFactor = 1.0,
+    this.cacheStackPosition = true,
     super.key,
     super.primary,
     super.mainAxis = Axis.vertical,
     super.verticalDetails = const ScrollableDetails.vertical(),
     super.horizontalDetails = const ScrollableDetails.horizontal(),
-    this.biggest = const Size(10000, 10000),
+    this.biggest = const Size(double.maxFinite, double.maxFinite),
     required super.delegate,
     super.cacheExtent,
     super.diagonalDragBehavior = DiagonalDragBehavior.free,
@@ -24,6 +25,7 @@ class BoundlessStackScrollView extends TwoDimensionalScrollView {
     super.clipBehavior = Clip.hardEdge,
   });
 
+  final bool cacheStackPosition;
   final double scaleFactor;
   final Size biggest;
 
@@ -34,6 +36,7 @@ class BoundlessStackScrollView extends TwoDimensionalScrollView {
     ViewportOffset horizontalOffset,
   ) {
     return BoundlessStackViewport(
+      cacheStackPosition: cacheStackPosition,
       biggest: biggest,
       scaleFactor: scaleFactor,
       verticalOffset: verticalOffset,
