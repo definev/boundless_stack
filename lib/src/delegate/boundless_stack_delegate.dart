@@ -38,14 +38,17 @@ class BoundlessStackDelegate extends TwoDimensionalChildDelegate {
 class BoundlessStackListDelegate extends BoundlessStackDelegate {
   BoundlessStackListDelegate._({
     required this.children,
+     super.layerSorted,
     required super.childrenBuilder,
   });
 
   factory BoundlessStackListDelegate({
+    bool layerSorted = false,
     required List<StackPosition> children,
   }) {
     return BoundlessStackListDelegate._(
       children: children,
+      layerSorted: layerSorted,
       childrenBuilder:
           (ViewportOffset verticalOffset, ViewportOffset horizontalOffset) =>
               children,
