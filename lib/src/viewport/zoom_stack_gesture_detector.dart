@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:developer';
 
 import 'package:boundless_stack/boundless_stack.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:simple_logger/simple_logger.dart';
@@ -104,6 +106,22 @@ class _ZoomStackGestureDetectorState extends State<ZoomStackGestureDetector>
 
   final _Debouncer _debouncer = _Debouncer(milliseconds: 100);
 
+  late final ScaleGestureRecognizer _scaleGestureRecognizer =
+      ScaleGestureRecognizer()
+        ..onStart = (details) {
+          log('Scale start by gesture listener');
+          widget.onScaleStart?.call();
+          onScaleStart(details);
+        }
+        ..onUpdate = (details) {
+          onScaleUpdate(details);
+        }
+        ..onEnd = (details) {
+          widget.onScaleEnd?.call();
+          onScaleEnd(details);
+        }
+        ..supportedDevices = {PointerDeviceKind.trackpad};
+
   @override
   Widget build(BuildContext context) {
     assert(stack.horizontalDetails.controller != null,
@@ -112,44 +130,55 @@ class _ZoomStackGestureDetectorState extends State<ZoomStackGestureDetector>
         'Vertical controller is null');
 
     return Listener(
-      onPointerSignal: (event) {
-        if (event is PointerScaleEvent) {
-          onScaleStart(ScaleStartDetails(localFocalPoint: event.localPosition));
-          onScaleUpdate(
-            ScaleUpdateDetails(
-              scale: event.scale,
-              focalPoint: event.position,
-              localFocalPoint: event.localPosition,
-            ),
-          );
-          onScaleEnd(ScaleEndDetails());
-        }
-        if (event is PointerScrollEvent) {
-          _stackKey.currentState?.overrideScrollBehavior();
-          move(event.scrollDelta);
-          _debouncer.run(() => _stackKey.currentState?.restoreScrollBehavior());
-        }
+      onPointerDown: _scaleGestureRecognizer.addPointer,
+      onPointerPanZoomStart: _scaleGestureRecognizer.addPointerPanZoom,
+      onPointerSignal: switch (kIsWasm || kIsWeb) {
+        true => (event) {
+            switch (event) {
+              /// This event from web only
+              case PointerScaleEvent():
+                log('Scale start by pointer');
+                onScaleStart(
+                    ScaleStartDetails(localFocalPoint: event.localPosition));
+                onScaleUpdate(
+                  ScaleUpdateDetails(
+                    scale: event.scale,
+                    focalPoint: event.position,
+                    localFocalPoint: event.localPosition,
+                  ),
+                );
+                onScaleEnd(ScaleEndDetails());
+              case PointerScrollEvent():
+                _stackKey.currentState?.overrideScrollBehavior();
+                event.device;
+                move(event.scrollDelta);
+                _debouncer.run(
+                  () => _stackKey.currentState?.restoreScrollBehavior(),
+                );
+            }
+          },
+        _ => null,
       },
       child: RawGestureDetector(
         gestures: {
           ScaleGestureRecognizer:
               GestureRecognizerFactoryWithHandlers<ScaleGestureRecognizer>(
             () => ScaleGestureRecognizer(),
-            (ScaleGestureRecognizer instance) {
-              instance
-                ..onStart = (details) {
-                  widget.onScaleStart?.call();
-                  onScaleStart(details);
-                }
-                ..onUpdate = (details) {
-                  onScaleUpdate(details);
-                }
-                ..onEnd = (details) {
-                  widget.onScaleEnd?.call();
-                  onScaleEnd(details);
-                }
-                ..supportedDevices = widget.supportedDevices;
-            },
+            (ScaleGestureRecognizer instance) => instance
+              ..onStart = (details) {
+                log('Scale start by gesture recognizer');
+                widget.onScaleStart?.call();
+                onScaleStart(details);
+              }
+              ..onUpdate = (details) {
+                onScaleUpdate(details);
+              }
+              ..onEnd = (details) {
+                widget.onScaleEnd?.call();
+                onScaleEnd(details);
+              }
+              ..supportedDevices = ({...widget.supportedDevices}
+                ..remove(PointerDeviceKind.trackpad)),
           ),
         },
         child: ColoredBox(
