@@ -113,8 +113,6 @@ class _ZoomStackGestureDetectorState extends State<ZoomStackGestureDetector>
     _scaleStart = null;
   }
 
-  final _Debouncer _debouncer = _Debouncer(milliseconds: 100);
-
   late final ScaleGestureRecognizer _scaleGestureRecognizer =
       ScaleGestureRecognizer()
         ..onStart = (details) {
@@ -197,8 +195,6 @@ class _ZoomStackGestureDetectorState extends State<ZoomStackGestureDetector>
                   if (HardwareKeyboard.instance.isShiftPressed) {
                     move(Offset(event.scrollDelta.dx, -event.scrollDelta.dx));
                   }
-                } else {
-                  move(event.scrollDelta);
                 }
             }
           },
