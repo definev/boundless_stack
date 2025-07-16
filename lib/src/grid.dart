@@ -6,18 +6,21 @@ TwoDimensionalViewportBuilder gridBackgroundBuilder({
   required double gridWidth,
   required double gridHeight,
   required Color gridColor,
-  required double scaleFactor,
+  required ValueNotifier<double> scaleFactor,
 }) {
   return (context, horizontalOffset, verticalOffset) {
-    return CustomPaint(
-      painter: _GridPainter(
-          gridThickness: gridThickness,
-          gridWidth: gridWidth,
-          gridHeight: gridHeight,
-          gridColor: gridColor,
-          scaleFactor: scaleFactor,
-          horizontalOffset: horizontalOffset,
-          verticalOffset: verticalOffset),
+    return ListenableBuilder(
+      listenable: scaleFactor,
+      builder: (context, child) => CustomPaint(
+        painter: _GridPainter(
+            gridThickness: gridThickness,
+            gridWidth: gridWidth,
+            gridHeight: gridHeight,
+            gridColor: gridColor,
+            scaleFactor: scaleFactor.value,
+            horizontalOffset: horizontalOffset,
+            verticalOffset: verticalOffset),
+      ),
     );
   };
 }

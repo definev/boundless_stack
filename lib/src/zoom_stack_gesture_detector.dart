@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:developer';
 import 'dart:math' as math;
 
@@ -7,46 +6,22 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:simple_logger/simple_logger.dart';
-
-class _Debouncer {
-  final int milliseconds;
-  Timer? _timer;
-
-  _Debouncer({required this.milliseconds});
-
-  void run(VoidCallback action) {
-    _timer?.cancel();
-    _timer = Timer(Duration(milliseconds: milliseconds), action);
-  }
-
-  void dispose() {
-    _timer?.cancel();
-  }
-}
-
-final logger = SimpleLogger(
-    // Optionally, specify a log level (defaults to Level.debug).
-    // Optionally, specify a custom `LogTheme` to override log styles.
-    );
 
 class ZoomStackGestureDetector extends StatefulWidget {
   const ZoomStackGestureDetector({
     super.key,
-    this.scaleFactor = 0.5,
-    required this.supportedDevices,
-    required this.onScaleFactorChanged,
+    required this.scaleFactor,
+    this.supportedDevices = const {...PointerDeviceKind.values},
     required this.stack,
     this.onScaleStart,
     this.onScaleEnd,
   });
 
-  final double scaleFactor;
+  final ValueNotifier<double> scaleFactor;
   final BoundlessStack Function(
     GlobalKey<BoundlessStackState> key,
-    double scaleFactor,
+    ValueNotifier<double> scaleFactor,
   ) stack;
-  final ValueChanged<double> onScaleFactorChanged;
   final VoidCallback? onScaleStart;
   final VoidCallback? onScaleEnd;
   final Set<PointerDeviceKind> supportedDevices;
@@ -63,7 +38,7 @@ class _ZoomStackGestureDetectorState extends State<ZoomStackGestureDetector>
   double? _scaleStart;
   Offset referencefocalOriginal = Offset.zero;
 
-  late double scaleFactor = widget.scaleFactor;
+  late ValueNotifier<double> scaleFactor = widget.scaleFactor;
 
   BoundlessStack get stack => widget.stack(_stackKey, scaleFactor);
 
@@ -84,29 +59,21 @@ class _ZoomStackGestureDetectorState extends State<ZoomStackGestureDetector>
     return (topLeft + focalPoint) / scaleFactor;
   }
 
-  void onUpdateScaleFactor(double newScaleFactor) {
-    scaleFactor = newScaleFactor;
-    widget.onScaleFactorChanged.call(newScaleFactor);
-  }
-
   void onScaleStart(ScaleStartDetails details) {
-    _scaleStart = scaleFactor;
+    _scaleStart = scaleFactor.value;
     referencefocalOriginal =
-        toViewportOffsetOriginal(details.localFocalPoint, scaleFactor);
+        toViewportOffsetOriginal(details.localFocalPoint, scaleFactor.value);
   }
 
   void onScaleUpdate(ScaleUpdateDetails details) {
-    setState(() {
-      final desiredScale = _scaleStart! * details.scale;
-      if (desiredScale >= 1.0) {
-        return;
-      }
-      onUpdateScaleFactor(desiredScale);
+    var desiredScale = _scaleStart! * details.scale;
+    if (desiredScale < 1.0 && desiredScale > 0.99) desiredScale = 1.0;
+    if (desiredScale >= 1.0) desiredScale = 1.0;
+    scaleFactor.value = desiredScale;
 
-      final scaledfocalPointOriginal =
-          toViewportOffsetOriginal(details.localFocalPoint, desiredScale);
-      move((referencefocalOriginal - scaledfocalPointOriginal) * desiredScale);
-    });
+    final scaledfocalPointOriginal =
+        toViewportOffsetOriginal(details.localFocalPoint, desiredScale);
+    move((referencefocalOriginal - scaledfocalPointOriginal) * desiredScale);
   }
 
   void onScaleEnd(ScaleEndDetails details) {
@@ -116,7 +83,6 @@ class _ZoomStackGestureDetectorState extends State<ZoomStackGestureDetector>
   late final ScaleGestureRecognizer _scaleGestureRecognizer =
       ScaleGestureRecognizer()
         ..onStart = (details) {
-          log('Scale start by gesture listener');
           widget.onScaleStart?.call();
           onScaleStart(details);
         }
@@ -215,7 +181,6 @@ class _ZoomStackGestureDetectorState extends State<ZoomStackGestureDetector>
             () => ScaleGestureRecognizer(),
             (ScaleGestureRecognizer instance) => instance
               ..onStart = (details) {
-                log('Scale start by gesture recognizer');
                 widget.onScaleStart?.call();
                 onScaleStart(details);
               }

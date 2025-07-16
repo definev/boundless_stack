@@ -1,5 +1,5 @@
-import 'package:boundless_stack/src/data/stack_position.dart';
-import 'package:boundless_stack/src/rendering/render_boundless_stack_viewport.dart';
+import 'package:boundless_stack/src/stack_position.dart';
+import 'package:boundless_stack/src/render_boundless_stack_viewport.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 
@@ -38,7 +38,7 @@ class BoundlessStackDelegate extends TwoDimensionalChildDelegate {
 class BoundlessStackListDelegate extends BoundlessStackDelegate {
   BoundlessStackListDelegate._({
     required this.children,
-     super.layerSorted,
+    super.layerSorted,
     required super.childrenBuilder,
   });
 

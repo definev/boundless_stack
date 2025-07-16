@@ -1,4 +1,4 @@
-import 'package:boundless_stack/src/rendering/render_boundless_stack_viewport.dart';
+import 'package:boundless_stack/src/render_boundless_stack_viewport.dart';
 import 'package:flutter/widgets.dart';
 
 class BoundlessStackViewport extends TwoDimensionalViewport {
@@ -10,21 +10,18 @@ class BoundlessStackViewport extends TwoDimensionalViewport {
     required super.horizontalAxisDirection,
     required super.delegate,
     required super.mainAxis,
-    required this.cacheStackPosition,
     required this.scaleFactor,
     required this.biggest,
     super.cacheExtent,
     super.clipBehavior,
   });
 
-  final bool cacheStackPosition;
   final double scaleFactor;
   final Size biggest;
 
   @override
   RenderTwoDimensionalViewport createRenderObject(BuildContext context) {
     return RenderBoundlessStackViewport(
-      cacheStackPosition: cacheStackPosition,
       scaleFactor: scaleFactor,
       biggest: biggest,
       horizontalOffset: horizontalOffset,
@@ -45,7 +42,6 @@ class BoundlessStackViewport extends TwoDimensionalViewport {
     RenderBoundlessStackViewport renderObject,
   ) {
     renderObject
-      ..cacheStackPosition = cacheStackPosition
       ..scaleFactor = scaleFactor
       ..biggest = biggest
       ..horizontalOffset = horizontalOffset

@@ -1,9 +1,11 @@
 import 'dart:math';
 
 import 'package:boxy/boxy.dart';
-import 'package:equatable/equatable.dart';
+import 'package:dart_mappable/dart_mappable.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
+
+part 'stack_position.mapper.dart';
 
 class StackResize {
   const StackResize({
@@ -64,10 +66,9 @@ class StackMove {
   final StackSnap? snap;
 }
 
-/// /Movable
-
-class StackPositionData with EquatableMixin {
-  const StackPositionData._({
+@MappableClass()
+class StackPositionData with StackPositionDataMappable {
+  const StackPositionData({
     required this.id,
     required this.layer,
     required this.offset,
@@ -77,28 +78,6 @@ class StackPositionData with EquatableMixin {
     this.height,
     this.preferredHeight,
   });
-
-  factory StackPositionData({
-    String? id,
-    required int layer,
-    required Offset offset,
-    double? width,
-    double? preferredWidth,
-    double? height,
-    double? preferredHeight,
-    bool keepAlive = false,
-  }) {
-    return StackPositionData._(
-      id: id ?? UniqueKey().toString(),
-      layer: layer,
-      offset: offset,
-      width: width,
-      preferredWidth: preferredWidth,
-      height: height,
-      preferredHeight: preferredHeight,
-      keepAlive: keepAlive,
-    );
-  }
 
   final String id;
   final int layer;
@@ -111,43 +90,7 @@ class StackPositionData with EquatableMixin {
 
   final bool keepAlive;
 
-  @override
-  List<Object?> get props => [
-        id,
-        layer,
-        offset,
-        width,
-        height,
-        preferredWidth,
-        preferredHeight,
-        keepAlive
-      ];
-
   Offset calculateScaledOffset(double scaleFactor) => offset * scaleFactor;
-
-  StackPositionData copyWith({
-    int? layer,
-    Offset? offset,
-    double? width,
-    double? preferredWidth,
-    double? height,
-    double? preferredHeight,
-    bool? keepAlive,
-  }) {
-    return StackPositionData(
-      id: id,
-      layer: layer ?? this.layer,
-      offset: offset ?? this.offset,
-      width: width ?? this.width,
-      preferredWidth: preferredWidth ?? this.preferredWidth,
-      height: height ?? this.height,
-      preferredHeight: preferredHeight ?? this.preferredHeight,
-      keepAlive: keepAlive ?? this.keepAlive,
-    );
-  }
-
-  @override
-  String toString() => 'StackPositionData(id: $id, layer: $layer, offset: $offset, width: $width, height: $height, preferredWidth: $preferredWidth, preferredHeight: $preferredHeight, keepAlive: $keepAlive)';
 }
 
 typedef StackPositionWidgetBuilder = Widget Function(
@@ -157,46 +100,22 @@ typedef StackPositionWidgetBuilder = Widget Function(
 );
 
 class StackPosition extends StatefulWidget {
-  const StackPosition._({
+  const StackPosition({
     super.key,
     required this.scaleFactor,
-    required this.data,
-    required this.builder,
-    required this.child,
-    this.onDataUpdated,
     this.moveable,
     this.resizable,
+    required this.notifier,
+    required this.builder,
+    this.child,
   });
 
-  factory StackPosition({
-    required GlobalKey key,
-    required StackPositionData data,
-    required StackPositionWidgetBuilder builder,
-    required double scaleFactor,
-    void Function(StackPositionData newValue)? onDataUpdated,
-    StackMove? moveable,
-    StackResize? resizable,
-    Widget? child,
-  }) {
-    return StackPosition._(
-      key: key,
-      data: data,
-      onDataUpdated: onDataUpdated,
-      builder: builder,
-      scaleFactor: scaleFactor,
-      moveable: moveable,
-      resizable: resizable,
-      child: child,
-    );
-  }
-
-  final double scaleFactor;
-  final StackPositionData data;
-  final void Function(StackPositionData newValue)? onDataUpdated;
-  final StackPositionWidgetBuilder builder;
-  final Widget? child;
+  final ValueNotifier<double> scaleFactor;
   final StackMove? moveable;
   final StackResize? resizable;
+  final ValueNotifier<StackPositionData> notifier;
+  final StackPositionWidgetBuilder builder;
+  final Widget? child;
 
   _StackPositionState? get state =>
       (key as GlobalKey).currentState as _StackPositionState?;
@@ -210,46 +129,12 @@ class _StackPositionState extends State<StackPosition>
   @override
   bool get wantKeepAlive => notifier.value.keepAlive;
 
-  late var notifier = ValueNotifier<StackPositionData>(widget.data);
+  late var notifier = widget.notifier;
+
+  StackPositionData get data => notifier.value;
 
   Offset initialLocalPosition = Offset.zero;
   Offset initialOffset = Offset.zero;
-
-  void onDataUpdated() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      widget.onDataUpdated?.call(notifier.value);
-    });
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    if (widget.onDataUpdated != null) notifier.addListener(onDataUpdated);
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
-    if (widget.onDataUpdated != null) notifier.removeListener(onDataUpdated);
-  }
-
-  @override
-  void didUpdateWidget(covariant StackPosition oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.data != oldWidget.data) {
-      notifier.value = widget.data.copyWith(
-        keepAlive: notifier.value.keepAlive,
-      );
-    }
-    if (widget.onDataUpdated != oldWidget.onDataUpdated) {
-      if (oldWidget.onDataUpdated != null) {
-        notifier.removeListener(onDataUpdated);
-      }
-      if (widget.onDataUpdated != null) {
-        notifier.addListener(onDataUpdated);
-      }
-    }
-  }
 
   Widget moveable({required Widget child}) {
     return GestureDetector(
@@ -261,9 +146,7 @@ class _StackPositionState extends State<StackPosition>
         notifier.value = notifier.value.copyWith(keepAlive: true);
       },
       onPanEnd: (details) {
-        if (widget.data.keepAlive == false) {
-          notifier.value = notifier.value.copyWith(keepAlive: false);
-        }
+        notifier.value = notifier.value.copyWith(keepAlive: false);
       },
       onPanUpdate: (details) {
         StackPositionData newValue;
@@ -288,10 +171,25 @@ class _StackPositionState extends State<StackPosition>
         }
 
         notifier.value = newValue;
-        widget.onDataUpdated?.call(newValue);
       },
       child: child,
     );
+  }
+
+  void _updateScaleFactor() {
+    setState(() {});
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    widget.scaleFactor.addListener(_updateScaleFactor);
+  }
+
+  @override
+  void dispose() {
+    widget.scaleFactor.removeListener(_updateScaleFactor);
+    super.dispose();
   }
 
   @override
@@ -307,7 +205,7 @@ class _StackPositionState extends State<StackPosition>
         if (widget.resizable case final resizable?) {
           child = _ResizableStackPosition(
             notifier: notifier,
-            scaleFactor: widget.scaleFactor,
+            scaleFactor: widget.scaleFactor.value,
 
             /// Constraints for the widget
             preferredOverFixedSize: resizable.preferredOverFixedSize,
@@ -324,7 +222,7 @@ class _StackPositionState extends State<StackPosition>
         } else {
           child = _ResizableStackPosition(
             notifier: notifier,
-            scaleFactor: widget.scaleFactor,
+            scaleFactor: widget.scaleFactor.value,
 
             /// Constraints for the widget
             preferredOverFixedSize: true,
@@ -347,7 +245,7 @@ class _StackPositionState extends State<StackPosition>
             width: notifier.value.width ?? constraints.maxWidth,
             child: Transform.scale(
               transformHitTests: true,
-              scale: widget.scaleFactor,
+              scale: widget.scaleFactor.value,
               alignment: Alignment.topLeft,
               child: child,
             ),

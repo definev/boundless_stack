@@ -30,7 +30,7 @@ class HomeView extends StatefulWidget {
 
 class _HomeViewState extends State<HomeView> {
   Offset referencefocalOriginal = Offset.zero;
-  double scaleFactor = 0.4;
+  ValueNotifier<double> scaleFactor = ValueNotifier(0.4);
 
   final ScrollableDetails _horizontalDetails = ScrollableDetails.horizontal(
     controller: ScrollController(
@@ -44,71 +44,93 @@ class _HomeViewState extends State<HomeView> {
   );
 
   Random rand = Random();
-  int sampleSize = 1000;
+  int sampleSize = 500;
 
   late List<GlobalKey> globalKeys = [
     for (int index = 0; index < sampleSize; index += 1)
       GlobalKey(debugLabel: 'key_$index'),
   ];
-  late List<StackPositionData> data = [
+  late List<ValueNotifier<StackPositionData>> data = [
     for (int index = 0; index < sampleSize; index += 1)
-      StackPositionData(
-        layer: 0,
-        offset: Offset(
-          rand.nextDouble() * 30000,
-          rand.nextDouble() * 30000,
+      ValueNotifier(
+        StackPositionData(
+          id: 'item_$index',
+          layer: index % 50,
+          offset: Offset(
+            rand.nextDouble() * 10000,
+            rand.nextDouble() * 10000,
+          ),
+          height: 200 + rand.nextDouble() * 300,
+          width: 200 + rand.nextDouble() * 300,
         ),
-        height: 200 + rand.nextDouble() * 300,
-        width: 200 + rand.nextDouble() * 300,
       ),
   ];
+  late List<StackPosition> children = [
+    for (int index = 0; index < sampleSize; index += 1)
+      StackPosition(
+        key: globalKeys[index],
+        notifier: data[index],
+        scaleFactor: scaleFactor,
+        moveable: const StackMove(),
+        builder: (context, notifier, child) => MaterialSample(
+          notifier: notifier,
+          child: child,
+        ),
+      ),
+  ]..sort((a, b) => a.notifier.value.layer.compareTo(b.notifier.value.layer));
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: ZoomStackGestureDetector(
-        supportedDevices: const {...PointerDeviceKind.values},
-        onScaleFactorChanged: (scaleFactor) =>
-            setState(() => this.scaleFactor = scaleFactor),
-        scaleFactor: scaleFactor,
-        stack: (stackKey, scaleFactor) => BoundlessStack(
-          key: stackKey,
-          clipBehavior: Clip.none,
-          cacheExtent: 0,
-          backgroundBuilder: gridBackgroundBuilder(
-            gridThickness: 1.0,
-            gridWidth: 100,
-            gridHeight: 100,
-            gridColor: Colors.green,
+    return Stack(
+      children: [
+        ZoomStackGestureDetector(
+          scaleFactor: scaleFactor,
+          stack: (stackKey, scaleFactor) => BoundlessStack(
+            key: stackKey,
+            clipBehavior: Clip.none,
+            cacheExtent: 0,
+            backgroundBuilder: gridBackgroundBuilder(
+              gridThickness: 1.0,
+              gridWidth: 100,
+              gridHeight: 100,
+              gridColor: Colors.green,
+              scaleFactor: scaleFactor,
+            ),
+            horizontalDetails: _horizontalDetails,
+            verticalDetails: _verticalDetails,
+            delegate: BoundlessStackListDelegate(
+              layerSorted: true,
+              children: children,
+            ),
             scaleFactor: scaleFactor,
           ),
-          horizontalDetails: _horizontalDetails,
-          verticalDetails: _verticalDetails,
-          delegate: BoundlessStackListDelegate(
-            children: [
-              for (int index = 0; index < sampleSize; index += 1)
-                StackPosition(
-                  key: globalKeys[index],
-                  data: data[index],
-                  onDataUpdated: (value) => data[index] = value,
-                  scaleFactor: scaleFactor,
-                  moveable: const StackMove(),
-                  builder: (context, notifier, child) => StackChild(
-                    notifier: notifier,
-                    child: child,
+        ),
+        Align(
+          alignment: Alignment.bottomCenter,
+          child: SafeArea(
+            top: false,
+            child: SizedBox(
+              height: 40,
+              child: Material(
+                color: Colors.transparent,
+                child: ListenableBuilder(
+                  listenable: scaleFactor,
+                  builder: (context, child) => Slider(
+                    value: scaleFactor.value,
+                    onChanged: (value) => scaleFactor.value = value,
                   ),
                 ),
-            ],
+              ),
+            ),
           ),
-          scaleFactor: scaleFactor,
         ),
-      ),
+      ],
     );
   }
 }
 
-class StackChild extends StatefulWidget {
-  const StackChild({
+class MaterialSample extends StatefulWidget {
+  const MaterialSample({
     super.key,
     required this.notifier,
     this.child,
@@ -118,38 +140,65 @@ class StackChild extends StatefulWidget {
   final Widget? child;
 
   @override
-  State<StackChild> createState() => _StackChildState();
+  State<MaterialSample> createState() => _MaterialSampleState();
 }
 
-class _StackChildState extends State<StackChild>
+class _MaterialSampleState extends State<MaterialSample>
     with AutomaticKeepAliveClientMixin {
+  void _update() {
+    setState(() {});
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    widget.notifier.addListener(_update);
+  }
+
+  @override
+  void dispose() {
+    widget.notifier.removeListener(_update);
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Boundless Stack'),
-      ),
-      body: ListView.builder(
-        itemBuilder: (context, index) => ListTile(
-          title: Text('Item $index'),
+    return ColoredBox(
+      color: switch (widget.notifier.value.layer) {
+        0 => Colors.red,
+        1 => Colors.blue,
+        2 => Colors.green,
+        3 => Colors.yellow,
+        4 => Colors.purple,
+        5 => Colors.orange,
+        6 => Colors.pink,
+        7 => Colors.brown,
+        8 => Colors.grey,
+        9 => Colors.teal,
+        10 => Colors.indigo,
+        11 => Colors.lime,
+        12 => Colors.cyan,
+        13 => Colors.amber,
+        14 => Colors.deepPurple,
+        15 => Colors.deepOrange,
+        16 => Colors.lightBlue,
+        17 => Colors.lightGreen,
+        _ => Colors.white,
+      },
+      child: const Center(
+        child: Text(
+          'Hello, World!',
+          style: TextStyle(
+            fontSize: 20,
+            decoration: TextDecoration.none,
+            color: Colors.black,
+          ),
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          final data = widget.notifier.value;
-          widget.notifier.value = data.copyWith(
-            offset: Offset(
-              data.offset.dx + 100,
-              data.offset.dy + 100,
-            ),
-          );
-        },
-        child: const Icon(Icons.add),
       ),
     );
   }
 
   @override
-  bool get wantKeepAlive => true;
+  bool get wantKeepAlive => false;
 }

@@ -1,46 +1,8 @@
-import 'package:boundless_stack/src/data/stack_position.dart';
-import 'package:boundless_stack/src/delegate/boundless_stack_delegate.dart';
+import 'package:boundless_stack/src/stack_position.dart';
+import 'package:boundless_stack/src/boundless_stack_delegate.dart';
+import 'package:boundless_stack/src/vicinity_manager.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
-
-abstract class VicinityManager<IDType> {
-  ChildVicinity produceVicinity(int layer, IDType id);
-  ChildVicinity? getVicinity(String id);
-  void dispose();
-}
-
-class MapVicinityManager implements VicinityManager<String> {
-  MapVicinityManager();
-
-  /// The first axis is [layer] and the second axis is [id] of the child.
-  final Map<String, ChildVicinity> _vicinities = {};
-
-  /// The highest [ChildVicinity] in the [layer] axis.
-  final Map<int, ChildVicinity> _highestVicinities = {};
-
-  @override
-  void dispose() {
-    _vicinities.clear();
-    _highestVicinities.clear();
-  }
-
-  @override
-  ChildVicinity produceVicinity(int layer, String id) {
-    final vicinity = _highestVicinities[layer];
-    final newVicinity = ChildVicinity(
-      xIndex: (vicinity?.xIndex ?? 0) + 1,
-      yIndex: layer,
-    );
-    _highestVicinities[layer] = newVicinity;
-    _vicinities[id] = newVicinity;
-    return newVicinity;
-  }
-
-  @override
-  ChildVicinity? getVicinity(String id) {
-    return _vicinities[id];
-  }
-}
 
 class RenderBoundlessStackViewport extends RenderTwoDimensionalViewport {
   RenderBoundlessStackViewport({
@@ -53,30 +15,17 @@ class RenderBoundlessStackViewport extends RenderTwoDimensionalViewport {
     required super.childManager,
     required double scaleFactor,
     required Size biggest,
-    required bool cacheStackPosition,
     super.cacheExtent,
     super.clipBehavior,
   })  : _scaleFactor = scaleFactor,
-        _cacheStackPosition = cacheStackPosition,
         _biggest = biggest;
-
-  bool _cacheStackPosition;
-  bool get cacheStackPosition => _cacheStackPosition;
-  set cacheStackPosition(bool value) {
-    if (_cacheStackPosition == value) return;
-    _cacheStackPosition = value;
-    if (!value) {
-      _cachedStackPositionData?.clear();
-      _cachedStackPositionData = null;
-    }
-  }
 
   Size _biggest;
   Size get biggest => _biggest;
   set biggest(Size value) {
     if (_biggest == value) return;
     _biggest = value;
-    markNeedsChildrenRelayout();
+    markNeedsLayout();
   }
 
   double _scaleFactor;
@@ -84,36 +33,33 @@ class RenderBoundlessStackViewport extends RenderTwoDimensionalViewport {
   set scaleFactor(double value) {
     if (_scaleFactor == value) return;
     _scaleFactor = value;
+    _forceLayout = true;
     markNeedsLayout();
   }
 
-  Map<ChildVicinity, Widget>? childWidgets = {};
+  bool _forceLayout = false;
+
+  Map<ChildVicinity, Widget>? _childWidgets = {};
+  Map<ChildVicinity, Widget>? get childWidgets => _childWidgets;
+
   List<ValueNotifier<StackPositionData>>? _stackPositionNotifiers = [];
   Map<String, StackPositionData>? _cachedStackPositionData = {};
-  Map<String, StackPositionData>? _newCachedStackPositionData = {};
 
-  List<RenderBox>? _linearChildren = [];
-  VicinityManager? vicinityManager = MapVicinityManager();
-
-  bool _needsRelayoutChildren = true;
-  void markNeedsChildrenRelayout() {
-    _needsRelayoutChildren = true;
-    markNeedsLayout();
-  }
+  List<RenderBox>? _renderBoxChildren = [];
+  VicinityManager? _vicinityManager = MapVicinityManager();
+  VicinityManager get vicinityManager => _vicinityManager!;
 
   @override
   void dispose() {
-    vicinityManager?.dispose();
-    vicinityManager = null;
-    childWidgets?.clear();
-    childWidgets = null;
+    _vicinityManager?.dispose();
+    _vicinityManager = null;
+    _childWidgets?.clear();
+    _childWidgets = null;
     _stackPositionNotifiers?.clear();
     _stackPositionNotifiers = null;
     _cachedStackPositionData?.clear();
     _cachedStackPositionData = null;
-    _newCachedStackPositionData?.clear();
-    _newCachedStackPositionData = null;
-    _linearChildren = null;
+    _renderBoxChildren = null;
     super.dispose();
   }
 
@@ -160,7 +106,7 @@ class RenderBoundlessStackViewport extends RenderTwoDimensionalViewport {
 
   @override
   bool hitTestChildren(BoxHitTestResult result, {required Offset position}) {
-    for (final RenderBox child in _linearChildren!.reversed) {
+    for (final RenderBox child in _renderBoxChildren!.reversed) {
       final TwoDimensionalViewportParentData childParentData =
           parentDataOf(child);
       if (!childParentData.isVisible) {
@@ -199,82 +145,75 @@ class RenderBoundlessStackViewport extends RenderTwoDimensionalViewport {
 
   @override
   void layoutChildSequence() {
-    assert(vicinityManager != null);
+    final delegate = this.delegate as BoundlessStackDelegate;
 
-    _linearChildren = null;
-    _linearChildren = [];
-    for (final notifier
-        in _stackPositionNotifiers ?? <ValueNotifier<StackPositionData>>[]) {
+    final newGenerationCachedStackPositionData = <String, StackPositionData>{};
+
+    _stackPositionNotifiers ??= [];
+
+    /// Clear the linear children
+    _renderBoxChildren = null;
+    _renderBoxChildren = [];
+
+    /// Remove all listeners from the old generation notifiers
+    for (final notifier in _stackPositionNotifiers!) {
       notifier.removeListener(markNeedsLayout);
     }
-    if (_cacheStackPosition) {
-      _newCachedStackPositionData?.clear();
-    }
-
     _stackPositionNotifiers = null;
     _stackPositionNotifiers = [];
-    childWidgets = null;
-    childWidgets = {};
+
+    /// Clear the child widgets
+    _childWidgets = null;
+    _childWidgets = {};
 
     setBoundary();
 
     // workaround for placeholder child
     buildPlaceholderChild();
 
-    final builderDelegate = delegate as BoundlessStackDelegate;
-    builderDelegate.viewport = this;
+    delegate.viewport = this;
 
-    List<StackPosition> children = builderDelegate.childrenBuilder(
+    List<StackPosition> children = delegate.childrenBuilder(
       verticalOffset,
       horizontalOffset,
     );
-    if (builderDelegate.layerSorted == false) {
-      children.sort((a, b) => a.data.layer.compareTo(b.data.layer));
+
+    if (delegate.layerSorted == false) {
+      children.sort(
+        (a, b) => a.notifier.value.layer.compareTo(b.notifier.value.layer),
+      );
     }
 
     for (final child in children) {
-      StackPositionData data;
-      if (child.state?.notifier.value case final value?) {
-        data = value;
-      } else {
-        data = child.data;
-      }
+      final data = child.notifier.value;
+
       // index must increase by 1 incase it conflicts with the placeholder child
-      var vicinity = vicinityManager!.getVicinity(data.id);
-      vicinity ??= vicinityManager!.produceVicinity(data.layer, data.id);
+      var vicinity = vicinityManager.getVicinity(data.id);
+      vicinity ??= vicinityManager.produceVicinity(data.layer, data.id);
       childWidgets![vicinity] = child;
 
       final isInViewport = stackPositionInViewport(data);
       if (!isInViewport) continue;
 
       if (buildOrObtainChildFor(vicinity) case final renderBox?) {
-        _linearChildren!.add(renderBox);
-        final notifier = child.state?.notifier;
-        if (notifier != null) {
-          notifier.addListener(markNeedsLayout);
-          _stackPositionNotifiers!.add(notifier);
+        newGenerationCachedStackPositionData[data.id] = data;
+        _renderBoxChildren!.add(renderBox);
+
+        /// Obtain the child and listen to its notifier and notify layout when it changes
+        _obtainChild(child);
+
+        final shouldLayout = _forceLayout ||
+            _checkIfDataChangeAffectedLayout(
+              _cachedStackPositionData?[data.id],
+              data,
+            );
+
+        if (shouldLayout) {
+          /// Layout the child
+          renderBox.layout(_calculateScaledConstraints(data, scaleFactor));
         }
 
-        bool needsLayout = true;
-
-        if (_cacheStackPosition) {
-          final oldData = _cachedStackPositionData?[data.id];
-          _newCachedStackPositionData?[data.id] = data;
-          if (oldData != null) {
-            if (_checkIfDataChangeAffectedLayout(oldData, data)) {
-              needsLayout = true;
-            } else {
-              needsLayout = false;
-            }
-          }
-        }
-
-        needsLayout = needsLayout || _needsRelayoutChildren;
-
-        if (needsLayout) {
-          renderBox.layout(calculateScaledConstraints(data, scaleFactor));
-        }
-
+        /// Set the position of the child
         final parentData = parentDataOf(renderBox);
         parentData.layoutOffset = data.calculateScaledOffset(scaleFactor) -
             Offset(
@@ -284,22 +223,18 @@ class RenderBoundlessStackViewport extends RenderTwoDimensionalViewport {
       }
     }
 
-    if (_cacheStackPosition) {
-      _cachedStackPositionData = _newCachedStackPositionData;
-    }
-    _needsRelayoutChildren = false;
+    _cachedStackPositionData = newGenerationCachedStackPositionData;
+
+    _forceLayout = false;
   }
 
-  BoxConstraints calculateScaledConstraints(
+  BoxConstraints _calculateScaledConstraints(
     StackPositionData data,
     double scaleFactor,
   ) {
     assert(data.width != double.infinity, 'Width must be finite');
     assert(data.height != double.infinity, 'Height must be finite');
-
-    if (scaleFactor < 1) {
-      scaleFactor = 1;
-    }
+    if (scaleFactor < 1) scaleFactor = 1;
 
     return BoxConstraints(
       minWidth: (data.width ?? 0) * scaleFactor,
@@ -307,5 +242,13 @@ class RenderBoundlessStackViewport extends RenderTwoDimensionalViewport {
       minHeight: (data.height ?? 0) * scaleFactor,
       maxHeight: (data.height ?? biggest.height) * scaleFactor,
     );
+  }
+
+  void _obtainChild(StackPosition child) {
+    final notifier = child.state?.notifier;
+    if (notifier == null) return;
+
+    notifier.addListener(markNeedsLayout);
+    _stackPositionNotifiers!.add(notifier);
   }
 }

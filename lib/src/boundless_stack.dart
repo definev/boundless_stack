@@ -1,55 +1,10 @@
-import 'package:boundless_stack/src/viewport/boundless_stack_viewport.dart';
+import 'package:boundless_stack/src/boundless_stack_scroll_view.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 
-import 'delegate/boundless_stack_delegate.dart';
-
-class BoundlessStackScrollView extends TwoDimensionalScrollView {
-  const BoundlessStackScrollView({
-    this.scaleFactor = 1.0,
-    this.cacheStackPosition = true,
-    super.key,
-    super.primary,
-    super.mainAxis = Axis.vertical,
-    super.verticalDetails = const ScrollableDetails.vertical(),
-    super.horizontalDetails = const ScrollableDetails.horizontal(),
-    this.biggest = const Size(double.maxFinite, double.maxFinite),
-    required super.delegate,
-    super.cacheExtent,
-    super.diagonalDragBehavior = DiagonalDragBehavior.free,
-    super.dragStartBehavior = DragStartBehavior.start,
-    super.keyboardDismissBehavior = ScrollViewKeyboardDismissBehavior.manual,
-    super.clipBehavior = Clip.hardEdge,
-  });
-
-  final bool cacheStackPosition;
-  final double scaleFactor;
-  final Size biggest;
-
-  @override
-  Widget buildViewport(
-    BuildContext context,
-    ViewportOffset verticalOffset,
-    ViewportOffset horizontalOffset,
-  ) {
-    return BoundlessStackViewport(
-      cacheStackPosition: cacheStackPosition,
-      biggest: biggest,
-      scaleFactor: scaleFactor,
-      verticalOffset: verticalOffset,
-      verticalAxisDirection: AxisDirection.down,
-      horizontalOffset: horizontalOffset,
-      horizontalAxisDirection: AxisDirection.right,
-      cacheExtent: cacheExtent,
-      clipBehavior: clipBehavior,
-      delegate: delegate,
-      mainAxis: mainAxis,
-    );
-  }
-}
+import 'boundless_stack_delegate.dart';
 
 class BoundlessStack extends StatefulWidget {
   const BoundlessStack({
@@ -117,7 +72,7 @@ class BoundlessStack extends StatefulWidget {
   /// Defaults to [Clip.hardEdge].
   final Clip clipBehavior;
 
-  final double scaleFactor;
+  final ValueNotifier<double> scaleFactor;
 
   final TwoDimensionalViewportBuilder? backgroundBuilder;
 
@@ -211,18 +166,23 @@ class BoundlessStackState extends State<BoundlessStack> {
             ),
           ),
         Positioned.fill(
-          child: BoundlessStackScrollView(
-            delegate: widget.delegate,
-            cacheExtent: widget.cacheExtent,
-            clipBehavior: widget.clipBehavior,
-            diagonalDragBehavior: widget.diagonalDragBehavior,
-            dragStartBehavior: widget.dragStartBehavior,
-            horizontalDetails: _horizontalDetails,
-            verticalDetails: _verticalDetails,
-            keyboardDismissBehavior: widget.keyboardDismissBehavior,
-            mainAxis: widget.mainAxis,
-            primary: widget.primary,
-            scaleFactor: widget.scaleFactor,
+          child: RepaintBoundary(
+            child: ListenableBuilder(
+              listenable: widget.scaleFactor,
+              builder: (context, child) => BoundlessStackScrollView(
+                delegate: widget.delegate,
+                cacheExtent: widget.cacheExtent,
+                clipBehavior: widget.clipBehavior,
+                diagonalDragBehavior: widget.diagonalDragBehavior,
+                dragStartBehavior: widget.dragStartBehavior,
+                horizontalDetails: _horizontalDetails,
+                verticalDetails: _verticalDetails,
+                keyboardDismissBehavior: widget.keyboardDismissBehavior,
+                mainAxis: widget.mainAxis,
+                primary: widget.primary,
+                scaleFactor: widget.scaleFactor.value,
+              ),
+            ),
           ),
         ),
         if (widget.foregroundBuilder case final foregroundBuilder?)
