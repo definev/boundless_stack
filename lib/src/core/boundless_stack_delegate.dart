@@ -10,7 +10,7 @@ import 'stack_position.dart';
 /// in the stack. It also handles layer sorting and child positioning.
 ///
 /// Subclasses must implement the [childrenBuilder] method to provide the children.
-abstract class BoundlessStackDelegate extends TwoDimensionalChildDelegate {
+class BoundlessStackDelegate extends TwoDimensionalChildDelegate {
   /// Creates a boundless stack delegate.
   ///
   /// The [childrenBuilder] parameter is required.
@@ -41,6 +41,19 @@ abstract class BoundlessStackDelegate extends TwoDimensionalChildDelegate {
   void bindViewport(RenderBoundlessStackViewport value) {
     _viewport = value;
   }
+
+  @override
+  Widget? build(BuildContext context, covariant ChildVicinity vicinity) {
+    if (vicinity == const ChildVicinity(xIndex: 0, yIndex: 0)) {
+      return const SizedBox();
+    }
+    if (_viewport == null) return null;
+    return _viewport?.childWidgets?[vicinity];
+  }
+
+  @override
+  bool shouldRebuild(BoundlessStackDelegate oldDelegate) =>
+      childrenBuilder != oldDelegate.childrenBuilder;
 }
 
 /// A delegate that provides a static list of children to a [BoundlessStack].
@@ -80,6 +93,7 @@ class BoundlessStackListDelegate extends BoundlessStackDelegate {
     return BoundlessStackListDelegate._(
       layerSorted: layerSorted,
       childrenBuilder: (_, __) => children,
+      children: children,
     );
   }
 
@@ -87,18 +101,13 @@ class BoundlessStackListDelegate extends BoundlessStackDelegate {
   BoundlessStackListDelegate._({
     required super.layerSorted,
     required super.childrenBuilder,
+    required this.children,
   });
 
-  @override
-  Widget? build(BuildContext context, covariant ChildVicinity vicinity) {
-    if (vicinity == const ChildVicinity(xIndex: 0, yIndex: 0)) {
-      return const SizedBox();
-    }
-    if (_viewport == null) return null;
-    return _viewport?.childWidgets?[vicinity];
-  }
+  final List<StackPosition> children;
 
   @override
-  bool shouldRebuild(BoundlessStackDelegate oldDelegate) =>
-      childrenBuilder != oldDelegate.childrenBuilder;
+  bool shouldRebuild(covariant BoundlessStackListDelegate oldDelegate) {
+    return children != oldDelegate.children;
+  }
 }
