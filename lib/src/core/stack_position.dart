@@ -327,7 +327,6 @@ class _StackPositionState extends State<StackPosition>
   void initState() {
     super.initState();
     widget.scaleFactor.addListener(_updateScaleFactor);
-    WidgetsBinding.instance.addPostFrameCallback((_) => setState(() {}));
   }
 
   @override
