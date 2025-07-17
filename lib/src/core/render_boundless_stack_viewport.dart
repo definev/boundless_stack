@@ -1,5 +1,6 @@
 import 'package:boundless_stack/src/core/stack_position.dart';
 import 'package:boundless_stack/src/core/boundless_stack_delegate.dart';
+import 'package:boundless_stack/src/utils/logging.dart';
 import 'package:boundless_stack/src/utils/vicinity_manager.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
@@ -51,6 +52,11 @@ class RenderBoundlessStackViewport extends RenderTwoDimensionalViewport {
     if (_scaleFactor == value) return;
     _scaleFactor = value;
     _forceLayout = true;
+    markNeedsLayout();
+  }
+
+  void markNeedsLayoutWithLogger() {
+    logger.finer('markNeedsLayoutWithLogger: markNeedsLayout');
     markNeedsLayout();
   }
 
@@ -190,8 +196,14 @@ class RenderBoundlessStackViewport extends RenderTwoDimensionalViewport {
     // workaround for placeholder child
     buildPlaceholderChild();
 
+    logger.finer(
+        'layoutChildSequence: start layout | cause by delegate: $needsDelegateRebuild');
+
     final delegate = (this.delegate as BoundlessStackDelegate)
       ..bindViewport(this);
+
+    logger.finer(
+        'layoutChildSequence: bind render viewport to delegate: $delegate');
     final nextActiveStackPositionData = <String, StackPositionData>{};
 
     /// Clear the linear children
@@ -200,7 +212,9 @@ class RenderBoundlessStackViewport extends RenderTwoDimensionalViewport {
 
     /// Remove all listeners from the old generation notifiers
     for (final notifier in _activeNotifiers ?? []) {
-      notifier.removeListener(markNeedsLayout);
+      logger.finer(
+          '  layoutChildSequence: remove listener from notifier: ${notifier.hashCode}');
+      notifier.removeListener(markNeedsLayoutWithLogger);
     }
     _activeNotifiers = null;
     _activeNotifiers = [];
@@ -209,26 +223,36 @@ class RenderBoundlessStackViewport extends RenderTwoDimensionalViewport {
     _childWidgets = null;
     _childWidgets = {};
 
+    logger.finer('layoutChildSequence: get children from delegate');
+
     List<StackPosition> children = delegate.childrenBuilder(
       horizontalOffset,
       verticalOffset,
     );
 
     if (delegate.layerSorted == false) {
+      logger.finer('  layoutChildSequence: sort children by layer');
       children.sort(
         (a, b) => a.notifier.value.layer.compareTo(b.notifier.value.layer),
       );
     }
 
+    logger.finer('layoutChildSequence: Laying out ${children.length} children');
+
     for (final child in children) {
+      logger.finer(
+          '  layoutChildSequence: get data from child: ${child.notifier.value.id} | ${child.notifier.hashCode}');
       final data = child.notifier.value;
 
       // index must increase by 1 incase it conflicts with the placeholder child
       var vicinity = vicinityManager.getVicinity(data.id);
       vicinity ??= vicinityManager.produceVicinity(data.layer, data.id);
+      logger.finer('  layoutChildSequence: child vicinity: $vicinity');
       childWidgets![vicinity] = child;
 
       final isInViewport = stackPositionInViewport(data);
+      logger
+          .finer('  layoutChildSequence: child is in viewport: $isInViewport');
       if (!isInViewport) continue;
 
       if (buildOrObtainChildFor(vicinity) case final renderBox?) {
@@ -236,18 +260,26 @@ class RenderBoundlessStackViewport extends RenderTwoDimensionalViewport {
         _renderBoxChildren!.add(renderBox);
 
         /// Obtain the child and listen to its notifier and notify layout when it changes
+        logger.finer(
+            '  layoutChildSequence: obtain child: ${child.notifier.value.id} with notifier: ${child.state?.notifier.hashCode}');
         _obtainChild(child);
 
-        final shouldLayout = _forceLayout ||
+        final shouldLayout = needsDelegateRebuild ||
+            _forceLayout ||
             _checkIfDataChangeAffectedLayout(
               _activeStackPositionData?[data.id],
               data,
             );
 
+        logger.finer('  layoutChildSequence: shouldLayout: $shouldLayout');
         if (shouldLayout) {
           /// Layout the child
-          renderBox.layout(_calculateScaledConstraints(data, scaleFactor));
+          renderBox.layout(_calculateScaledConstraints(data, scaleFactor),
+              parentUsesSize: true);
         }
+
+        logger
+            .finer('  layoutChildSequence: buildOrObtainChildFor: $renderBox');
 
         /// Set the position of the child
         final parentData = parentDataOf(renderBox);
@@ -256,10 +288,14 @@ class RenderBoundlessStackViewport extends RenderTwoDimensionalViewport {
               horizontalOffset.pixels,
               verticalOffset.pixels,
             );
+
+        logger.finer(
+            '  layoutChildSequence: set layout offset: ${parentData.layoutOffset}');
       }
     }
 
     _activeStackPositionData = nextActiveStackPositionData;
+    logger.finer('layoutChildSequence: done layout');
 
     _forceLayout = false;
   }
@@ -269,8 +305,10 @@ class RenderBoundlessStackViewport extends RenderTwoDimensionalViewport {
     final notifier = child.state?.notifier;
     if (notifier == null) return;
 
-    notifier.addListener(markNeedsLayout);
+    notifier.addListener(markNeedsLayoutWithLogger);
     _activeNotifiers!.add(notifier);
+    logger.finer(
+        '  layoutChildSequence: add listener to notifier: ${notifier.hashCode}');
   }
 
   /// Calculates the scaled constraints for a child.
