@@ -43,7 +43,7 @@ class _HomeViewState extends State<HomeView> {
   );
 
   Random rand = Random();
-  int sampleSize = 500;
+  int sampleSize = 5000;
 
   late List<GlobalKey> globalKeys = [
     for (int index = 0; index < sampleSize; index += 1)
@@ -56,8 +56,8 @@ class _HomeViewState extends State<HomeView> {
           id: 'item_$index',
           layer: index % 50,
           offset: Offset(
-            rand.nextDouble() * 10000,
-            rand.nextDouble() * 10000,
+            rand.nextDouble() * 100000,
+            rand.nextDouble() * 100000,
           ),
           height: 200 + rand.nextDouble() * 300,
           width: 200 + rand.nextDouble() * 300,
@@ -84,26 +84,31 @@ class _HomeViewState extends State<HomeView> {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        ZoomStackGestureDetector(
-          scaleFactor: scaleFactor,
-          stack: (stackKey, scaleFactor) => BoundlessStack(
-            key: stackKey,
-            clipBehavior: Clip.none,
-            cacheExtent: 0,
-            backgroundBuilder: gridBackgroundBuilder(
-              gridThickness: 1.0,
-              gridWidth: 100,
-              gridHeight: 100,
-              gridColor: Colors.green,
+        const Positioned.fill(
+          child: ColoredBox(color: Colors.black),
+        ),
+        Positioned.fill(
+          child: ZoomStackGestureDetector(
+            scaleFactor: scaleFactor,
+            stack: (stackKey, scaleFactor) => BoundlessStack(
+              key: stackKey,
+              clipBehavior: Clip.none,
+              cacheExtent: 0,
+              backgroundBuilder: gridBackgroundBuilder(
+                gridThickness: 1.0,
+                gridWidth: 100,
+                gridHeight: 100,
+                gridColor: Colors.green,
+                scaleFactor: scaleFactor,
+              ),
+              horizontalDetails: _horizontalDetails,
+              verticalDetails: _verticalDetails,
+              delegate: BoundlessStackListDelegate(
+                layerSorted: true,
+                children: children,
+              ),
               scaleFactor: scaleFactor,
             ),
-            horizontalDetails: _horizontalDetails,
-            verticalDetails: _verticalDetails,
-            delegate: BoundlessStackListDelegate(
-              layerSorted: true,
-              children: children,
-            ),
-            scaleFactor: scaleFactor,
           ),
         ),
         Align(

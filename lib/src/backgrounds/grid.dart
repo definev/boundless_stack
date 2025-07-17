@@ -39,16 +39,20 @@ TwoDimensionalViewportBuilder gridBackgroundBuilder({
   return (context, horizontalOffset, verticalOffset) {
     return ListenableBuilder(
       listenable: scaleFactor,
-      builder: (context, child) => CustomPaint(
-        painter: _GridPainter(
-            gridThickness: gridThickness,
-            gridWidth: gridWidth,
-            gridHeight: gridHeight,
-            gridColor: gridColor,
-            scaleFactor: scaleFactor.value,
-            horizontalOffset: horizontalOffset,
-            verticalOffset: verticalOffset),
-      ),
+      builder: (context, child) {
+        if (scaleFactor.value < 0.05) return const SizedBox.shrink();
+
+        return CustomPaint(
+          painter: _GridPainter(
+              gridThickness: gridThickness,
+              gridWidth: gridWidth,
+              gridHeight: gridHeight,
+              gridColor: gridColor,
+              scaleFactor: scaleFactor.value,
+              horizontalOffset: horizontalOffset,
+              verticalOffset: verticalOffset),
+        );
+      },
     );
   };
 }
@@ -73,31 +77,31 @@ class _GridPainter extends CustomPainter {
 
   /// The thickness of the grid lines.
   final double gridThickness;
-  
+
   /// The thickness of the grid lines adjusted for the current scale factor.
   late final double scaledGridThickness = gridThickness * scaleFactor;
-  
+
   /// The width of each grid cell.
   final double gridWidth;
-  
+
   /// The width of each grid cell adjusted for the current scale factor.
   late final double scaledGridWidth = gridWidth * scaleFactor;
-  
+
   /// The height of each grid cell.
   final double gridHeight;
-  
+
   /// The height of each grid cell adjusted for the current scale factor.
   late final double scaledGridHeight = gridHeight * scaleFactor;
-  
+
   /// The color of the grid lines.
   final Color gridColor;
-  
+
   /// The current scale factor.
   final double scaleFactor;
 
   /// The horizontal viewport offset.
   final ViewportOffset horizontalOffset;
-  
+
   /// The vertical viewport offset.
   final ViewportOffset verticalOffset;
 
