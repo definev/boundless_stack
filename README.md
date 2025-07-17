@@ -51,25 +51,19 @@ class HomeView extends StatefulWidget {
 }
 
 class _HomeViewState extends State<HomeView> {
-  final ScrollableDetails _horizontalDetails =
-      ScrollableDetails.horizontal(controller: ScrollController());
-  final ScrollableDetails _verticalDetails =
-      ScrollableDetails.vertical(controller: ScrollController());
-
-  late List<StackPositionData> _data = [
+  final ValueNotifier<double> _scaleFactor = ValueNotifier(1.0);
+  final List<StackPositionData> _data = [
     for (int index = 0; index < 10; index += 1)
       StackPositionData(
+        id: 'item_$index',
         layer: index,
-        offset: Offset(
-          index * 200.0,
-          index * 200.0,
-        ),
+        offset: Offset(index * 200.0, index * 200.0),
         height: 200,
         width: 200,
       )
   ];
 
-  late List<GlobalKey> globalKeys = [
+  late List<GlobalKey> _globalKeys = [
     for (int index = 0; index < 10; index += 1)
       GlobalKey(debugLabel: 'key_$index'),
   ];
@@ -80,6 +74,7 @@ class _HomeViewState extends State<HomeView> {
       body: ZoomStackGestureDetector(
         enableMoveByTouch: true,
         enableMoveByMouse: true,
+        scaleFactor: _scaleFactor,
         onScaleFactorChanged: (scaleFactor) =>
             setState(() => _data = _data.map((data) {
                   return data.copyWith(
@@ -87,7 +82,6 @@ class _HomeViewState extends State<HomeView> {
                     height: data.height! * scaleFactor,
                   );
                 }).toList()),
-        scaleFactor: 0.4,
         stack: (stackKey, scaleFactor) => BoundlessStack(
           key: stackKey,
           cacheExtent: 0,
@@ -98,24 +92,25 @@ class _HomeViewState extends State<HomeView> {
             gridColor: Colors.green,
             scaleFactor: scaleFactor,
           ),
-          horizontalDetails: _horizontalDetails,
-          verticalDetails: _verticalDetails,
+          horizontalDetails: ScrollableDetails.horizontal(),
+          verticalDetails: ScrollableDetails.vertical(),
           delegate: BoundlessStackListDelegate(
             children: [
               for (int index = 0; index < 10; index += 1)
                 StackPosition(
-                  key: globalKeys[index],
-                  data: _data[index],
-                  onDataUpdated: (value) =>
-                      setState(() => _data[index] = value),
+                  key: _globalKeys[index],
+                  notifier: ValueNotifier(_data[index]),
                   scaleFactor: scaleFactor,
                   moveable: StackMove(
                       snap: StackSnap.square(snap: 50.0)), // Snap to grid
                   builder: (context, notifier, child) => Container(
-                    key: globalKeys[index],
+                    key: _globalKeys[index],
                     height: 200,
                     width: 200,
                     color: Colors.red,
+                    child: Center(
+                      child: Text('Item $index'),
+                    ),
                   ),
                 ),
             ],
@@ -130,7 +125,7 @@ class _HomeViewState extends State<HomeView> {
 
 In this example:
 
-1. We define a `ScrollController` for each axis to control the scrolling behaviour.
+1. We define a `ValueNotifier` for the scale factor to control the zoom level.
 2. A list of `StackPositionData` is generated to hold the data for each element (layer, position, and size). 
 3. We use `StackPosition` with a `StackMove` to enable the ability to drag elements around the canvas.
 4. We use `gridBackgroundBuilder` to create a grid background.
@@ -148,9 +143,16 @@ In this example:
 * **`moveable`:** Use a `StackMove` with a `StackSnap` to implement snap-to-grid functionality for item movements.
 * **`resizable`:** This property controls the resizing ability of individual stack items.
 
+### Documentation
+
+For more detailed documentation, please refer to:
+
+* [API Documentation](doc/API.md): Comprehensive API reference for all classes and methods.
+* [Architecture](doc/ARCHITECTURE.md): Detailed explanation of the internal architecture and design decisions.
+
 ### Contribution Guidelines
 
-Contributions to Boundless Stack are welcomed.  Here's how you can contribute:
+Contributions to Boundless Stack are welcomed. Here's how you can contribute:
 
 1. **Fork the repository.**
 2. **Create a branch for your feature.**
@@ -174,6 +176,4 @@ Boundless Stack is released under the MIT License. See the [LICENSE](LICENSE) fi
 
 * **Flutter:** [https://flutter.dev](https://flutter.dev)
 * **Boxy:** [https://pub.dev/packages/boxy](https://pub.dev/packages/boxy)
-* **Simple Logger:** [https://pub.dev/packages/simple_logger](https://pub.dev/packages/simple_logger) 
-* **Equatable:** [https://pub.dev/packages/equatable](https://pub.dev/packages/equatable)
-
+* **Dart Mappable:** [https://pub.dev/packages/dart_mappable](https://pub.dev/packages/dart_mappable)

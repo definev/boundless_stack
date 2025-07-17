@@ -7,7 +7,15 @@ import 'package:flutter/widgets.dart';
 
 part 'stack_position.mapper.dart';
 
+/// Configuration for resizing a [StackPosition] widget.
+///
+/// This class defines how a stack position can be resized, including its
+/// dimensions, resize handle appearance, and callbacks.
 class StackResize {
+  /// Creates a stack resize configuration.
+  ///
+  /// The [width], [preferredWidth], [height], and [preferredHeight] parameters
+  /// define the dimensions of the widget.
   const StackResize({
     required this.width,
     required this.preferredWidth,
@@ -18,36 +26,57 @@ class StackResize {
     this.onSizeChanged,
   });
 
+  /// Whether to prioritize preferred size over fixed size.
+  ///
+  /// When true, preferred dimensions take precedence over fixed dimensions.
   final bool preferredOverFixedSize;
 
-  /// The width of the widget
+  /// The fixed width of the widget.
+  ///
+  /// If null, the widget will use [preferredWidth] or its natural width.
   final double? width;
 
-  /// The preferred width of the widget
+  /// The preferred width of the widget.
+  ///
+  /// Used when [width] is null or [preferredOverFixedSize] is true.
   final double? preferredWidth;
 
-  /// The height of the widget
+  /// The fixed height of the widget.
+  ///
+  /// If null, the widget will use [preferredHeight] or its natural height.
   final double? height;
 
-  /// The preferred height of the widget
+  /// The preferred height of the widget.
+  ///
+  /// Used when [height] is null or [preferredOverFixedSize] is true.
   final double? preferredHeight;
 
-  /// This will be the thumb widget that will be used to resize the widget
+  /// The widget to use as a resize handle.
+  ///
+  /// This widget will be positioned at the bottom-right corner of the stack position.
   final Widget? thumb;
 
-  /// This will call when the size is changed by user action
+  /// Callback that is called when the size is changed by user interaction.
   ///
-  /// So it update the notifier already dont need to call notifier.value = newValue
+  /// The notifier is already updated, so there's no need to update it manually.
   final ValueChanged<Size>? onSizeChanged;
 }
 
-/// Movable
+/// Configuration for snapping a [StackPosition] to a grid.
+///
+/// This class defines the grid dimensions for snapping during movement.
 class StackSnap {
+  /// Creates a stack snap configuration with separate horizontal and vertical snapping.
+  ///
+  /// The [heightSnap] and [widthSnap] parameters define the grid cell dimensions.
   const StackSnap({
     required this.heightSnap,
     required this.widthSnap,
   });
 
+  /// Creates a stack snap configuration with equal horizontal and vertical snapping.
+  ///
+  /// The [snap] parameter defines the grid cell size for both dimensions.
   factory StackSnap.square({
     required double snap,
   }) =>
@@ -56,18 +85,37 @@ class StackSnap {
         widthSnap: snap,
       );
 
+  /// The vertical grid cell size for snapping.
   final double heightSnap;
+
+  /// The horizontal grid cell size for snapping.
   final double widthSnap;
 }
 
+/// Configuration for moving a [StackPosition] widget.
+///
+/// This class defines how a stack position can be moved, including optional
+/// snap-to-grid behavior.
 class StackMove {
+  /// Creates a stack move configuration.
+  ///
+  /// The [snap] parameter defines optional snap-to-grid behavior.
   const StackMove({this.snap});
 
+  /// Optional snap-to-grid configuration.
+  ///
+  /// When provided, the stack position will snap to a grid during movement.
   final StackSnap? snap;
 }
 
+/// Data class that holds position and size information for a [StackPosition].
+///
+/// This class is immutable and can be copied with new values using [copyWith].
 @MappableClass()
 class StackPositionData with StackPositionDataMappable {
+  /// Creates a stack position data object.
+  ///
+  /// The [id], [layer], and [offset] parameters are required.
   const StackPositionData({
     required this.id,
     required this.layer,
@@ -79,27 +127,91 @@ class StackPositionData with StackPositionDataMappable {
     this.preferredHeight,
   });
 
+  /// Unique identifier for the stack position.
   final String id;
+
+  /// Z-index layer for rendering order.
+  ///
+  /// Higher values are rendered on top of lower values.
   final int layer;
+
+  /// Position in the 2D space.
+  ///
+  /// The offset is in world coordinates, not screen coordinates.
   final Offset offset;
 
+  /// Fixed width of the stack position.
+  ///
+  /// If null, the widget will use [preferredWidth] or its natural width.
   final double? width;
+
+  /// Preferred width of the stack position.
+  ///
+  /// Used when [width] is null or when preferred size takes precedence.
   final double? preferredWidth;
+
+  /// Fixed height of the stack position.
+  ///
+  /// If null, the widget will use [preferredHeight] or its natural height.
   final double? height;
+
+  /// Preferred height of the stack position.
+  ///
+  /// Used when [height] is null or when preferred size takes precedence.
   final double? preferredHeight;
 
+  /// Whether to keep the widget alive when it's off-screen.
+  ///
+  /// When true, the widget will not be disposed when it's scrolled out of view.
   final bool keepAlive;
 
+  /// Calculates the offset adjusted for the current scale factor.
+  ///
+  /// This is used for positioning the widget in the viewport.
   Offset calculateScaledOffset(double scaleFactor) => offset * scaleFactor;
 }
 
+/// Builder function for creating a widget for a [StackPosition].
+///
+/// The [context] is the build context, [notifier] is the position data notifier,
+/// and [child] is an optional child widget.
 typedef StackPositionWidgetBuilder = Widget Function(
   BuildContext context,
   ValueNotifier<StackPositionData> notifier,
   Widget? child,
 );
 
+/// A widget that represents a positioned item within a [BoundlessStack].
+///
+/// This widget handles positioning, movement, and resizing of items in the stack.
+/// It can be configured to be moveable, resizable, and to snap to a grid.
+///
+/// ## Example
+///
+/// ```dart
+/// StackPosition(
+///   scaleFactor: scaleNotifier,
+///   notifier: ValueNotifier(StackPositionData(
+///     id: 'item1',
+///     layer: 0,
+///     offset: Offset(100, 100),
+///   )),
+///   moveable: StackMove(
+///     snap: StackSnap.square(snap: 50.0),
+///   ),
+///   builder: (context, notifier, child) => Container(
+///     width: 200,
+///     height: 200,
+///     color: Colors.red,
+///     child: child,
+///   ),
+///   child: Text('Draggable Item'),
+/// )
+/// ```
 class StackPosition extends StatefulWidget {
+  /// Creates a stack position widget.
+  ///
+  /// The [scaleFactor], [notifier], and [builder] parameters are required.
   const StackPosition({
     super.key,
     required this.scaleFactor,
@@ -110,13 +222,40 @@ class StackPosition extends StatefulWidget {
     this.child,
   });
 
+  /// The current scale factor of the parent stack.
+  ///
+  /// This is used to adjust the position and size of the widget.
   final ValueNotifier<double> scaleFactor;
+
+  /// Configuration for movement behavior.
+  ///
+  /// When provided, the widget can be moved by dragging.
   final StackMove? moveable;
+
+  /// Configuration for resize behavior.
+  ///
+  /// When provided, the widget can be resized using the resize handle.
   final StackResize? resizable;
+
+  /// Notifier for the position data.
+  ///
+  /// This notifier is updated when the widget is moved or resized.
   final ValueNotifier<StackPositionData> notifier;
+
+  /// Builder function for creating the widget.
+  ///
+  /// This function is called with the current context, position data notifier,
+  /// and optional child widget.
   final StackPositionWidgetBuilder builder;
+
+  /// Optional child widget.
+  ///
+  /// This widget is passed to the [builder] function.
   final Widget? child;
 
+  /// Gets the current state of this widget.
+  ///
+  /// This is used by the parent stack to access the state.
   _StackPositionState? get state =>
       (key as GlobalKey).currentState as _StackPositionState?;
 

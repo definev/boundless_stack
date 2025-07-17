@@ -1,10 +1,17 @@
-import 'package:boundless_stack/src/stack_position.dart';
-import 'package:boundless_stack/src/boundless_stack_delegate.dart';
-import 'package:boundless_stack/src/vicinity_manager.dart';
+import 'package:boundless_stack/src/core/stack_position.dart';
+import 'package:boundless_stack/src/core/boundless_stack_delegate.dart';
+import 'package:boundless_stack/src/utils/vicinity_manager.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 
+/// Render object for the boundless stack viewport.
+///
+/// This class handles the layout and painting of the children based on the current
+/// viewport position and scale factor.
 class RenderBoundlessStackViewport extends RenderTwoDimensionalViewport {
+  /// Creates a render boundless stack viewport.
+  ///
+  /// All parameters except [cacheExtent] and [clipBehavior] are required.
   RenderBoundlessStackViewport({
     required super.horizontalOffset,
     required super.horizontalAxisDirection,
@@ -20,16 +27,26 @@ class RenderBoundlessStackViewport extends RenderTwoDimensionalViewport {
   })  : _scaleFactor = scaleFactor,
         _biggest = biggest;
 
+  /// The maximum size of the scrollable area.
   Size _biggest;
+
+  /// Gets the maximum size of the scrollable area.
   Size get biggest => _biggest;
+
+  /// Sets the maximum size of the scrollable area.
   set biggest(Size value) {
     if (_biggest == value) return;
     _biggest = value;
     markNeedsLayout();
   }
 
+  /// The current scale factor.
   double _scaleFactor;
+
+  /// Gets the current scale factor.
   double get scaleFactor => _scaleFactor;
+
+  /// Sets the current scale factor.
   set scaleFactor(double value) {
     if (_scaleFactor == value) return;
     _scaleFactor = value;
@@ -37,16 +54,28 @@ class RenderBoundlessStackViewport extends RenderTwoDimensionalViewport {
     markNeedsLayout();
   }
 
+  /// Whether to force a layout on the next layout pass.
   bool _forceLayout = false;
 
+  /// Map of child vicinities to widgets.
   Map<ChildVicinity, Widget>? _childWidgets = {};
+
+  /// Gets the map of child vicinities to widgets.
   Map<ChildVicinity, Widget>? get childWidgets => _childWidgets;
 
+  /// List of stack position notifiers.
   List<ValueNotifier<StackPositionData>>? _stackPositionNotifiers = [];
+
+  /// Map of stack position IDs to data.
   Map<String, StackPositionData>? _cachedStackPositionData = {};
 
+  /// List of render box children.
   List<RenderBox>? _renderBoxChildren = [];
+
+  /// Manager for child vicinities.
   VicinityManager? _vicinityManager = MapVicinityManager();
+
+  /// Gets the vicinity manager.
   VicinityManager get vicinityManager => _vicinityManager!;
 
   @override
@@ -63,6 +92,9 @@ class RenderBoundlessStackViewport extends RenderTwoDimensionalViewport {
     super.dispose();
   }
 
+  /// Sets the boundary for the viewport.
+  ///
+  /// This allows infinite scrolling in both directions.
   void setBoundary() {
     verticalOffset.applyContentDimensions(
       double.negativeInfinity,
@@ -74,6 +106,9 @@ class RenderBoundlessStackViewport extends RenderTwoDimensionalViewport {
     );
   }
 
+  /// Determines whether a stack position is in the viewport.
+  ///
+  /// A stack position is in the viewport if it's visible or within the cache extent.
   bool stackPositionInViewport(StackPositionData data) {
     if (data.keepAlive) return true;
 
@@ -92,6 +127,9 @@ class RenderBoundlessStackViewport extends RenderTwoDimensionalViewport {
         actualOffset.dy + height < verticalPixels);
   }
 
+  /// Builds a placeholder child at the origin.
+  ///
+  /// This is used as a workaround for the viewport to have at least one child.
   void buildPlaceholderChild() {
     if (buildOrObtainChildFor(const ChildVicinity(xIndex: 0, yIndex: 0))
         case final placeholder?) {
@@ -128,6 +166,9 @@ class RenderBoundlessStackViewport extends RenderTwoDimensionalViewport {
     return false;
   }
 
+  /// Checks if a data change affected the layout.
+  ///
+  /// This is used to determine whether a child needs to be relaid out.
   bool _checkIfDataChangeAffectedLayout(
     StackPositionData? oldData,
     StackPositionData newData,
@@ -174,8 +215,8 @@ class RenderBoundlessStackViewport extends RenderTwoDimensionalViewport {
     delegate.viewport = this;
 
     List<StackPosition> children = delegate.childrenBuilder(
-      verticalOffset,
       horizontalOffset,
+      verticalOffset,
     );
 
     if (delegate.layerSorted == false) {
@@ -228,6 +269,9 @@ class RenderBoundlessStackViewport extends RenderTwoDimensionalViewport {
     _forceLayout = false;
   }
 
+  /// Calculates the scaled constraints for a child.
+  ///
+  /// This adjusts the constraints based on the current scale factor.
   BoxConstraints _calculateScaledConstraints(
     StackPositionData data,
     double scaleFactor,
@@ -244,6 +288,9 @@ class RenderBoundlessStackViewport extends RenderTwoDimensionalViewport {
     );
   }
 
+  /// Obtains a child and listens to its notifier.
+  ///
+  /// This is used to update the layout when the child's data changes.
   void _obtainChild(StackPosition child) {
     final notifier = child.state?.notifier;
     if (notifier == null) return;
