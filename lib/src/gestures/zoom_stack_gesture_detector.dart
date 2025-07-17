@@ -33,6 +33,13 @@ class ZoomStackGestureDetector extends StatefulWidget {
 
 class _ZoomStackGestureDetectorState extends State<ZoomStackGestureDetector>
     with SingleTickerProviderStateMixin {
+  late final _animationController = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 300),
+  );
+  late final _scaleAnimation =
+      Tween<double>(begin: 0.0, end: 1.0).animate(_animationController);
+
   final GlobalKey<BoundlessStackState> _stackKey = GlobalKey();
 
   double? _scaleStart;
@@ -125,6 +132,8 @@ class _ZoomStackGestureDetectorState extends State<ZoomStackGestureDetector>
     }
   }
 
+  VoidCallback? _zoomAnimationListener;
+
   @override
   Widget build(BuildContext context) {
     assert(stack.horizontalDetails.controller != null,
@@ -176,6 +185,64 @@ class _ZoomStackGestureDetectorState extends State<ZoomStackGestureDetector>
       },
       child: RawGestureDetector(
         gestures: {
+          SerialTapGestureRecognizer: GestureRecognizerFactoryWithHandlers<
+                  SerialTapGestureRecognizer>(
+              SerialTapGestureRecognizer.new,
+              (instance) =>
+                  instance.onSerialTapDown = (SerialTapDownDetails details) {
+                    if (_zoomAnimationListener != null) {
+                      _animationController.stop();
+                      _animationController
+                          .removeListener(_zoomAnimationListener!);
+                      _animationController.reset();
+                      _zoomAnimationListener = null;
+                    }
+
+                    if (details.count == 2) {
+                      widget.onScaleStart?.call();
+                      onScaleStart(ScaleStartDetails(
+                        focalPoint: details.globalPosition,
+                        localFocalPoint: details.localPosition,
+                      ));
+
+                      _zoomAnimationListener = () {
+                        if (_animationController.isCompleted) {
+                          onScaleEnd(ScaleEndDetails());
+                          widget.onScaleEnd?.call();
+                        } else {
+                          onScaleUpdate(ScaleUpdateDetails(
+                            scale: 1 + _scaleAnimation.value * 0.8,
+                            focalPoint: details.globalPosition,
+                            localFocalPoint: details.localPosition,
+                          ));
+                        }
+                      };
+
+                      _animationController.addListener(_zoomAnimationListener!);
+                      _animationController.forward();
+                    }
+                    if (details.count == 3) {
+                      widget.onScaleStart?.call();
+                      onScaleStart(ScaleStartDetails(
+                        focalPoint: details.globalPosition,
+                        localFocalPoint: details.localPosition,
+                      ));
+                      _zoomAnimationListener = () {
+                        if (_animationController.isCompleted) {
+                          onScaleEnd(ScaleEndDetails());
+                          widget.onScaleEnd?.call();
+                        } else {
+                          onScaleUpdate(ScaleUpdateDetails(
+                            scale: 1 - _scaleAnimation.value * 0.6,
+                            focalPoint: details.globalPosition,
+                            localFocalPoint: details.localPosition,
+                          ));
+                        }
+                      };
+                      _animationController.addListener(_zoomAnimationListener!);
+                      _animationController.forward();
+                    }
+                  }),
           ScaleGestureRecognizer:
               GestureRecognizerFactoryWithHandlers<ScaleGestureRecognizer>(
             () => ScaleGestureRecognizer(),
