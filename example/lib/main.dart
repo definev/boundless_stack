@@ -90,8 +90,7 @@ class _HomeViewState extends State<HomeView> {
         Positioned.fill(
           child: ZoomStackGestureDetector(
             scaleFactor: scaleFactor,
-            stack: (stackKey, scaleFactor) => BoundlessStack(
-              key: stackKey,
+            stack: BoundlessStack(
               clipBehavior: Clip.none,
               cacheExtent: 0,
               backgroundBuilder: gridBackgroundBuilder(

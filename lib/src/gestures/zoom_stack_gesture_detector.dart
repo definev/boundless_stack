@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:developer';
 import 'dart:math' as math;
 
@@ -18,10 +19,7 @@ class ZoomStackGestureDetector extends StatefulWidget {
   });
 
   final ValueNotifier<double> scaleFactor;
-  final BoundlessStack Function(
-    GlobalKey<BoundlessStackState> key,
-    ValueNotifier<double> scaleFactor,
-  ) stack;
+  final BoundlessStack stack;
   final VoidCallback? onScaleStart;
   final VoidCallback? onScaleEnd;
   final Set<PointerDeviceKind> supportedDevices;
@@ -37,17 +35,16 @@ class _ZoomStackGestureDetectorState extends State<ZoomStackGestureDetector>
     vsync: this,
     duration: const Duration(milliseconds: 300),
   );
-  late final _scaleAnimation =
-      Tween<double>(begin: 0.0, end: 1.0).animate(_animationController);
-
-  final GlobalKey<BoundlessStackState> _stackKey = GlobalKey();
+  late final _scaleAnimation = Tween<double>(begin: 0.0, end: 1.0)
+      .chain(CurveTween(curve: Curves.decelerate))
+      .animate(_animationController);
 
   double? _scaleStart;
   Offset referencefocalOriginal = Offset.zero;
 
   late ValueNotifier<double> scaleFactor = widget.scaleFactor;
 
-  BoundlessStack get stack => widget.stack(_stackKey, scaleFactor);
+  BoundlessStack get stack => widget.stack;
 
   Offset get topLeft {
     return Offset(
@@ -73,6 +70,7 @@ class _ZoomStackGestureDetectorState extends State<ZoomStackGestureDetector>
   }
 
   void onScaleUpdate(ScaleUpdateDetails details) {
+    if (_scaleStart == null) return;
     var desiredScale = _scaleStart! * details.scale;
     if (desiredScale < 1.0 && desiredScale > 0.99) desiredScale = 1.0;
     if (desiredScale >= 1.0) desiredScale = 1.0;
@@ -105,9 +103,19 @@ class _ZoomStackGestureDetectorState extends State<ZoomStackGestureDetector>
   bool _isControlPressed = false;
 
   bool onKeyPressed(KeyEvent event) {
-    if (_isControlPressed != HardwareKeyboard.instance.isControlPressed) {
-      _isControlPressed = HardwareKeyboard.instance.isControlPressed;
-      setState(() {});
+    if (event is KeyDownEvent) {
+      if (event.logicalKey == LogicalKeyboardKey.controlLeft ||
+          event.logicalKey == LogicalKeyboardKey.controlRight) {
+        _isControlPressed = true;
+        setState(() {});
+      }
+    }
+    if (event is KeyUpEvent) {
+      if (event.logicalKey == LogicalKeyboardKey.controlLeft ||
+          event.logicalKey == LogicalKeyboardKey.controlRight) {
+        _isControlPressed = false;
+        setState(() {});
+      }
     }
     return false;
   }
@@ -122,6 +130,10 @@ class _ZoomStackGestureDetectorState extends State<ZoomStackGestureDetector>
   void dispose() {
     super.dispose();
     HardwareKeyboard.instance.removeHandler(onKeyPressed);
+    _animationController.dispose();
+    _scaleGestureRecognizer.dispose();
+    _zoomAnimationListener = null;
+    _zoomAnimationTimer?.cancel();
   }
 
   @override
@@ -133,6 +145,7 @@ class _ZoomStackGestureDetectorState extends State<ZoomStackGestureDetector>
   }
 
   VoidCallback? _zoomAnimationListener;
+  Timer? _zoomAnimationTimer;
 
   @override
   Widget build(BuildContext context) {
@@ -149,7 +162,6 @@ class _ZoomStackGestureDetectorState extends State<ZoomStackGestureDetector>
             switch (event) {
               /// This event from web only
               case PointerScaleEvent():
-                log('Scale start by pointer');
                 widget.onScaleStart?.call();
                 onScaleStart(
                     ScaleStartDetails(localFocalPoint: event.localPosition));
@@ -196,6 +208,7 @@ class _ZoomStackGestureDetectorState extends State<ZoomStackGestureDetector>
                           .removeListener(_zoomAnimationListener!);
                       _animationController.reset();
                       _zoomAnimationListener = null;
+                      _zoomAnimationTimer?.cancel();
                     }
 
                     if (details.count == 2) {
@@ -219,7 +232,11 @@ class _ZoomStackGestureDetectorState extends State<ZoomStackGestureDetector>
                       };
 
                       _animationController.addListener(_zoomAnimationListener!);
-                      _animationController.forward();
+
+                      _zoomAnimationTimer = Timer(
+                        const Duration(milliseconds: 100),
+                        () => _animationController.forward(),
+                      );
                     }
                     if (details.count == 3) {
                       widget.onScaleStart?.call();
