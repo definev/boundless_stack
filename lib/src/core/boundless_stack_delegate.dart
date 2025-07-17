@@ -38,7 +38,7 @@ abstract class BoundlessStackDelegate extends TwoDimensionalChildDelegate {
   ///
   /// This is set by the [BoundlessStack] when the delegate is used.
   late RenderBoundlessStackViewport? _viewport;
-  set viewport(RenderBoundlessStackViewport value) {
+  void bindViewport(RenderBoundlessStackViewport value) {
     _viewport = value;
   }
 }

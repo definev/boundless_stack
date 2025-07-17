@@ -77,19 +77,23 @@ class StackSnap {
   /// Creates a stack snap configuration with equal horizontal and vertical snapping.
   ///
   /// The [snap] parameter defines the grid cell size for both dimensions.
-  factory StackSnap.square({
+  const factory StackSnap.square({
     required double snap,
-  }) =>
-      StackSnap(
-        heightSnap: snap,
-        widthSnap: snap,
-      );
+  }) = _StackSnapSquare;
 
   /// The vertical grid cell size for snapping.
   final double heightSnap;
 
   /// The horizontal grid cell size for snapping.
   final double widthSnap;
+}
+
+class _StackSnapSquare extends StackSnap {
+  const _StackSnapSquare({required double snap})
+      : super(
+          heightSnap: snap,
+          widthSnap: snap,
+        );
 }
 
 /// Configuration for moving a [StackPosition] widget.

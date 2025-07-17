@@ -70,7 +70,9 @@ class _HomeViewState extends State<HomeView> {
         key: globalKeys[index],
         notifier: data[index],
         scaleFactor: scaleFactor,
-        moveable: const StackMove(),
+        moveable: const StackMove(
+          snap: StackSnap.square(snap: 100),
+        ),
         builder: (context, notifier, child) => MaterialSample(
           notifier: notifier,
           child: child,

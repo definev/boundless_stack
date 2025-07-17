@@ -64,10 +64,10 @@ class RenderBoundlessStackViewport extends RenderTwoDimensionalViewport {
   Map<ChildVicinity, Widget>? get childWidgets => _childWidgets;
 
   /// List of stack position notifiers.
-  List<ValueNotifier<StackPositionData>>? _stackPositionNotifiers = [];
+  List<ValueNotifier<StackPositionData>>? _activeNotifiers = [];
 
   /// Map of stack position IDs to data.
-  Map<String, StackPositionData>? _cachedStackPositionData = {};
+  Map<String, StackPositionData>? _activeStackPositionData = {};
 
   /// List of render box children.
   List<RenderBox>? _renderBoxChildren = [];
@@ -84,10 +84,10 @@ class RenderBoundlessStackViewport extends RenderTwoDimensionalViewport {
     _vicinityManager = null;
     _childWidgets?.clear();
     _childWidgets = null;
-    _stackPositionNotifiers?.clear();
-    _stackPositionNotifiers = null;
-    _cachedStackPositionData?.clear();
-    _cachedStackPositionData = null;
+    _activeNotifiers?.clear();
+    _activeNotifiers = null;
+    _activeStackPositionData?.clear();
+    _activeStackPositionData = null;
     _renderBoxChildren = null;
     super.dispose();
   }
@@ -112,10 +112,10 @@ class RenderBoundlessStackViewport extends RenderTwoDimensionalViewport {
   bool stackPositionInViewport(StackPositionData data) {
     if (data.keepAlive) return true;
 
-    double horizontalPixels = horizontalOffset.pixels - cacheExtent;
-    double verticalPixels = verticalOffset.pixels - cacheExtent;
-    double viewportWidth = viewportDimension.width + cacheExtent;
-    double viewportHeight = viewportDimension.height + cacheExtent;
+    final double horizontalPixels = horizontalOffset.pixels - cacheExtent;
+    final double verticalPixels = verticalOffset.pixels - cacheExtent;
+    final double viewportWidth = viewportDimension.width + cacheExtent;
+    final double viewportHeight = viewportDimension.height + cacheExtent;
 
     final Offset actualOffset = data.calculateScaledOffset(scaleFactor);
     final double width = data.width ?? data.preferredWidth ?? biggest.width;
@@ -144,11 +144,13 @@ class RenderBoundlessStackViewport extends RenderTwoDimensionalViewport {
 
   @override
   bool hitTestChildren(BoxHitTestResult result, {required Offset position}) {
-    for (final RenderBox child in _renderBoxChildren!.reversed) {
+    assert(_renderBoxChildren != null);
+    // Iterate in reverse for z-order
+    for (int i = _renderBoxChildren!.length - 1; i >= 0; i--) {
+      final RenderBox child = _renderBoxChildren![i];
       final TwoDimensionalViewportParentData childParentData =
           parentDataOf(child);
       if (!childParentData.isVisible) {
-        // Can't hit a child that is not visible.
         continue;
       }
       final bool isHit = result.addWithPaintOffset(
@@ -175,44 +177,37 @@ class RenderBoundlessStackViewport extends RenderTwoDimensionalViewport {
   ) {
     if (oldData == null) return true;
 
-    if (oldData.layer != newData.layer) return true;
-    if (oldData.width != newData.width) return true;
-    if (oldData.height != newData.height) return true;
-    if (oldData.preferredHeight != newData.preferredHeight) return true;
-    if (oldData.preferredWidth != newData.preferredWidth) return true;
-
-    return false;
+    return oldData.layer != newData.layer ||
+        oldData.width != newData.width ||
+        oldData.height != newData.height ||
+        oldData.preferredHeight != newData.preferredHeight ||
+        oldData.preferredWidth != newData.preferredWidth;
   }
 
   @override
   void layoutChildSequence() {
-    final delegate = this.delegate as BoundlessStackDelegate;
+    setBoundary();
+    // workaround for placeholder child
+    buildPlaceholderChild();
 
-    final newGenerationCachedStackPositionData = <String, StackPositionData>{};
-
-    _stackPositionNotifiers ??= [];
+    final delegate = (this.delegate as BoundlessStackDelegate)
+      ..bindViewport(this);
+    final nextActiveStackPositionData = <String, StackPositionData>{};
 
     /// Clear the linear children
     _renderBoxChildren = null;
     _renderBoxChildren = [];
 
     /// Remove all listeners from the old generation notifiers
-    for (final notifier in _stackPositionNotifiers!) {
+    for (final notifier in _activeNotifiers ?? []) {
       notifier.removeListener(markNeedsLayout);
     }
-    _stackPositionNotifiers = null;
-    _stackPositionNotifiers = [];
+    _activeNotifiers = null;
+    _activeNotifiers = [];
 
     /// Clear the child widgets
     _childWidgets = null;
     _childWidgets = {};
-
-    setBoundary();
-
-    // workaround for placeholder child
-    buildPlaceholderChild();
-
-    delegate.viewport = this;
 
     List<StackPosition> children = delegate.childrenBuilder(
       horizontalOffset,
@@ -237,7 +232,7 @@ class RenderBoundlessStackViewport extends RenderTwoDimensionalViewport {
       if (!isInViewport) continue;
 
       if (buildOrObtainChildFor(vicinity) case final renderBox?) {
-        newGenerationCachedStackPositionData[data.id] = data;
+        nextActiveStackPositionData[data.id] = data;
         _renderBoxChildren!.add(renderBox);
 
         /// Obtain the child and listen to its notifier and notify layout when it changes
@@ -245,7 +240,7 @@ class RenderBoundlessStackViewport extends RenderTwoDimensionalViewport {
 
         final shouldLayout = _forceLayout ||
             _checkIfDataChangeAffectedLayout(
-              _cachedStackPositionData?[data.id],
+              _activeStackPositionData?[data.id],
               data,
             );
 
@@ -264,9 +259,18 @@ class RenderBoundlessStackViewport extends RenderTwoDimensionalViewport {
       }
     }
 
-    _cachedStackPositionData = newGenerationCachedStackPositionData;
+    _activeStackPositionData = nextActiveStackPositionData;
 
     _forceLayout = false;
+  }
+
+  /// Manages notifier listeners efficiently
+  void _obtainChild(StackPosition child) {
+    final notifier = child.state?.notifier;
+    if (notifier == null) return;
+
+    notifier.addListener(markNeedsLayout);
+    _activeNotifiers!.add(notifier);
   }
 
   /// Calculates the scaled constraints for a child.
@@ -278,24 +282,14 @@ class RenderBoundlessStackViewport extends RenderTwoDimensionalViewport {
   ) {
     assert(data.width != double.infinity, 'Width must be finite');
     assert(data.height != double.infinity, 'Height must be finite');
-    if (scaleFactor < 1) scaleFactor = 1;
+
+    final effectiveScale = scaleFactor < 1 ? 1.0 : scaleFactor;
 
     return BoxConstraints(
-      minWidth: (data.width ?? 0) * scaleFactor,
-      maxWidth: (data.width ?? biggest.width) * scaleFactor,
-      minHeight: (data.height ?? 0) * scaleFactor,
-      maxHeight: (data.height ?? biggest.height) * scaleFactor,
+      minWidth: (data.width ?? 0) * effectiveScale,
+      maxWidth: (data.width ?? biggest.width) * effectiveScale,
+      minHeight: (data.height ?? 0) * effectiveScale,
+      maxHeight: (data.height ?? biggest.height) * effectiveScale,
     );
-  }
-
-  /// Obtains a child and listens to its notifier.
-  ///
-  /// This is used to update the layout when the child's data changes.
-  void _obtainChild(StackPosition child) {
-    final notifier = child.state?.notifier;
-    if (notifier == null) return;
-
-    notifier.addListener(markNeedsLayout);
-    _stackPositionNotifiers!.add(notifier);
   }
 }
