@@ -89,7 +89,7 @@ class _HomeViewState extends State<HomeView> {
         ),
         Positioned.fill(
           child: ZoomStackGestureDetector(
-            scaleFactor: scaleFactor,
+            controller: ZoomStackGestureController(scaleFactor: scaleFactor),
             stack: BoundlessStack(
               clipBehavior: Clip.none,
               cacheExtent: 0,

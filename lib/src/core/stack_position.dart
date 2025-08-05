@@ -72,6 +72,7 @@ class StackSnap {
   const StackSnap({
     required this.heightSnap,
     required this.widthSnap,
+    this.offset = Offset.zero,
   });
 
   /// Creates a stack snap configuration with equal horizontal and vertical snapping.
@@ -79,6 +80,7 @@ class StackSnap {
   /// The [snap] parameter defines the grid cell size for both dimensions.
   const factory StackSnap.square({
     required double snap,
+    Offset offset,
   }) = _StackSnapSquare;
 
   /// The vertical grid cell size for snapping.
@@ -86,13 +88,17 @@ class StackSnap {
 
   /// The horizontal grid cell size for snapping.
   final double widthSnap;
+
+  /// The offset for calibrate cell position
+  final Offset offset;
 }
 
 class _StackSnapSquare extends StackSnap {
-  const _StackSnapSquare({required double snap})
+  const _StackSnapSquare({required double snap, Offset offset = Offset.zero})
       : super(
           heightSnap: snap,
           widthSnap: snap,
+          offset: offset,
         );
 }
 
@@ -305,7 +311,7 @@ class _StackPositionState extends State<StackPosition>
           );
 
           newValue = notifier.value.copyWith(
-            offset: snapInitialOffset + snapOffset,
+            offset: snapInitialOffset + snapOffset - snap.offset,
           );
         } else {
           newValue = notifier.value.copyWith(
