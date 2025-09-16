@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:developer';
 import 'dart:math' as math;
 
@@ -39,10 +38,9 @@ class ZoomStackGestureController {
   }
 
   void updateScaleFactor(double scaleFactor) {
-    final stackRenderBox =
-        (stack.key as GlobalKey<BoundlessStackState>).currentContext!
-                .findRenderObject()
-            as RenderBox;
+    final stackRenderBox = (stack.key as GlobalKey<BoundlessStackState>)
+        .currentContext!
+        .findRenderObject() as RenderBox;
 
     final center = stackRenderBox.size.center(Offset.zero);
     onScaleStart(ScaleStartDetails(focalPoint: center));
@@ -130,15 +128,6 @@ class ZoomStackGestureDetector extends StatefulWidget {
 
 class _ZoomStackGestureDetectorState extends State<ZoomStackGestureDetector>
     with SingleTickerProviderStateMixin {
-  late final _animationController = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 300),
-  );
-  late final _scaleAnimation = Tween<double>(
-    begin: 0.0,
-    end: 1.0,
-  ).chain(CurveTween(curve: Curves.decelerate)).animate(_animationController);
-
   late ValueNotifier<double> scaleFactor = widget.controller.scaleFactor;
 
   late final ZoomStackGestureController _controller = widget.controller
@@ -191,14 +180,8 @@ class _ZoomStackGestureDetectorState extends State<ZoomStackGestureDetector>
   void dispose() {
     super.dispose();
     HardwareKeyboard.instance.removeHandler(onKeyPressed);
-    _animationController.dispose();
     _scaleGestureRecognizer.dispose();
-    _zoomAnimationListener = null;
-    _zoomAnimationTimer?.cancel();
   }
-
-  VoidCallback? _zoomAnimationListener;
-  Timer? _zoomAnimationTimer;
 
   @override
   Widget build(BuildContext context) {
@@ -216,130 +199,67 @@ class _ZoomStackGestureDetectorState extends State<ZoomStackGestureDetector>
       onPointerPanZoomStart: _scaleGestureRecognizer.addPointerPanZoom,
       onPointerSignal: switch (kIsWasm || kIsWeb) {
         true => (event) {
-          switch (event) {
-            /// This event from web only
-            case PointerScaleEvent():
-              widget.onScaleStart?.call();
-              _controller.onScaleStart(
-                ScaleStartDetails(localFocalPoint: event.localPosition),
-              );
-              _controller.onScaleUpdate(
-                ScaleUpdateDetails(
-                  scale: event.scale,
-                  focalPoint: event.position,
-                  localFocalPoint: event.localPosition,
-                ),
-              );
-              _controller.onScaleEnd(ScaleEndDetails());
-              widget.onScaleEnd?.call();
-            case PointerScrollEvent():
-              if (event.kind == PointerDeviceKind.mouse && _isControlPressed) {
-                _controller.onScaleByMouseWheel(event);
-              } else if (event.kind == PointerDeviceKind.mouse) {
-                if (HardwareKeyboard.instance.isShiftPressed) {
-                  _controller.move(
-                    Offset(event.scrollDelta.dx, -event.scrollDelta.dx),
-                  );
+            switch (event) {
+              /// This event from web only
+              case PointerScaleEvent():
+                widget.onScaleStart?.call();
+                _controller.onScaleStart(
+                  ScaleStartDetails(localFocalPoint: event.localPosition),
+                );
+                _controller.onScaleUpdate(
+                  ScaleUpdateDetails(
+                    scale: event.scale,
+                    focalPoint: event.position,
+                    localFocalPoint: event.localPosition,
+                  ),
+                );
+                _controller.onScaleEnd(ScaleEndDetails());
+                widget.onScaleEnd?.call();
+              case PointerScrollEvent():
+                if (event.kind == PointerDeviceKind.mouse &&
+                    _isControlPressed) {
+                  _controller.onScaleByMouseWheel(event);
+                } else if (event.kind == PointerDeviceKind.mouse) {
+                  if (HardwareKeyboard.instance.isShiftPressed) {
+                    _controller.move(
+                      Offset(event.scrollDelta.dx, -event.scrollDelta.dx),
+                    );
+                  }
                 }
-              }
-          }
-        },
+            }
+          },
         _ => (event) {
-          switch (event) {
-            case PointerScrollEvent():
-              if (event.kind == PointerDeviceKind.mouse && _isControlPressed) {
-                _controller.onScaleByMouseWheel(event);
-              }
-          }
-        },
+            switch (event) {
+              case PointerScrollEvent():
+                if (event.kind == PointerDeviceKind.mouse &&
+                    _isControlPressed) {
+                  _controller.onScaleByMouseWheel(event);
+                }
+            }
+          },
       },
       child: IgnorePointer(
         ignoring: _isControlPressed,
         child: RawGestureDetector(
           gestures: {
-            // SerialTapGestureRecognizer: GestureRecognizerFactoryWithHandlers<
-            //         SerialTapGestureRecognizer>(
-            //     SerialTapGestureRecognizer.new,
-            //     (instance) =>
-            //         instance.onSerialTapDown = (SerialTapDownDetails details) {
-            //           if (_zoomAnimationListener != null) {
-            //             _animationController.stop();
-            //             _animationController
-            //                 .removeListener(_zoomAnimationListener!);
-            //             _animationController.reset();
-            //             _zoomAnimationListener = null;
-            //             _zoomAnimationTimer?.cancel();
-            //           }
-
-            //           if (details.count == 2) {
-            //             widget.onScaleStart?.call();
-            //             _controller.onScaleStart(ScaleStartDetails(
-            //               focalPoint: details.globalPosition,
-            //               localFocalPoint: details.localPosition,
-            //             ));
-
-            //             _zoomAnimationListener = () {
-            //               if (_animationController.isCompleted) {
-            //                 _controller.onScaleEnd(ScaleEndDetails());
-            //                 widget.onScaleEnd?.call();
-            //               } else {
-            //                 _controller.onScaleUpdate(ScaleUpdateDetails(
-            //                   scale: 1 + _scaleAnimation.value * 0.8,
-            //                   focalPoint: details.globalPosition,
-            //                   localFocalPoint: details.localPosition,
-            //                 ));
-            //               }
-            //             };
-
-            //             _animationController
-            //                 .addListener(_zoomAnimationListener!);
-
-            //             _zoomAnimationTimer = Timer(
-            //               const Duration(milliseconds: 100),
-            //               () => _animationController.forward(),
-            //             );
-            //           }
-            //           if (details.count == 3) {
-            //             widget.onScaleStart?.call();
-            //             _controller.onScaleStart(ScaleStartDetails(
-            //               focalPoint: details.globalPosition,
-            //               localFocalPoint: details.localPosition,
-            //             ));
-            //             _zoomAnimationListener = () {
-            //               if (_animationController.isCompleted) {
-            //                 _controller.onScaleEnd(ScaleEndDetails());
-            //                 widget.onScaleEnd?.call();
-            //               } else {
-            //                 _controller.onScaleUpdate(ScaleUpdateDetails(
-            //                   scale: 1 - _scaleAnimation.value * 0.6,
-            //                   focalPoint: details.globalPosition,
-            //                   localFocalPoint: details.localPosition,
-            //                 ));
-            //               }
-            //             };
-            //             _animationController
-            //                 .addListener(_zoomAnimationListener!);
-            //             _animationController.forward();
-            //           }
-            //         }),
             ScaleGestureRecognizer:
                 GestureRecognizerFactoryWithHandlers<ScaleGestureRecognizer>(
-                  () => ScaleGestureRecognizer(),
-                  (ScaleGestureRecognizer instance) => instance
-                    ..onStart = (details) {
-                      widget.onScaleStart?.call();
-                      _controller.onScaleStart(details);
-                    }
-                    ..onUpdate = (details) {
-                      _controller.onScaleUpdate(details);
-                    }
-                    ..onEnd = (details) {
-                      widget.onScaleEnd?.call();
-                      _controller.onScaleEnd(details);
-                    }
-                    ..supportedDevices = ({...widget.supportedDevices}
-                      ..remove(PointerDeviceKind.trackpad)),
-                ),
+              () => ScaleGestureRecognizer(),
+              (ScaleGestureRecognizer instance) => instance
+                ..onStart = (details) {
+                  widget.onScaleStart?.call();
+                  _controller.onScaleStart(details);
+                }
+                ..onUpdate = (details) {
+                  _controller.onScaleUpdate(details);
+                }
+                ..onEnd = (details) {
+                  widget.onScaleEnd?.call();
+                  _controller.onScaleEnd(details);
+                }
+                ..supportedDevices = ({...widget.supportedDevices}
+                  ..remove(PointerDeviceKind.trackpad)),
+            ),
           },
           child: ColoredBox(color: Colors.transparent, child: stack),
         ),
